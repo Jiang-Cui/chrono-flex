@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <vector>
 #include "include.cuh"
+#include "ANCFSystem.cuh"
 
 ANCFSystem::ANCFSystem() {
 
