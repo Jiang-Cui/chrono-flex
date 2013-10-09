@@ -27,11 +27,11 @@ public:
 	Element() {
 		// create test element!
 		this->node0 = Node(0, 0, 0, 1, 0, 0);
-		this->node1 = Node(100, 0, 0, 1, 0, 0);
-		this->r = .02 * 100;
+		this->node1 = Node(1, 0, 0, 1, 0, 0);
+		this->r = .02;
 		this->nu = .3;
-		this->E = 2.e7/100/100;
-		this->rho = 1150.0e-6;
+		this->E = 2.e7;
+		this->rho = 1150.0;
 		this->l = 1.0;
 		collisionRadius = 0;
 	}
@@ -43,6 +43,16 @@ public:
 		this->nu = .3;
 		this->E = 2.0e5;
 		this->rho = 1150.0e-6;
+		collisionRadius = 0;
+	}
+	Element(Node node0, Node node1, double r, double nu, double E, double rho) {
+		this->node0 = node0;
+		this->node1 = node1;
+		this->r = r;
+		this->l = getLength(node0, node1);
+		this->nu = nu;
+		this->E = E;
+		this->rho = rho;
 		collisionRadius = 0;
 	}
 	/*

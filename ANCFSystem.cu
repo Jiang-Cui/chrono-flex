@@ -3,7 +3,47 @@
 #include "include.cuh"
 #include "ANCFSystem.cuh"
 
+#include <cusp/io/matrix_market.h>
+
+// linear operator y = A*x
+class stencil: public cusp::linear_operator<double, cusp::device_memory> {
+public:
+	typedef cusp::linear_operator<double, cusp::device_memory> super;
+
+	int N;
+	DeviceView massMatrix;
+	DeviceView stiffnessMatrix;
+	DeviceValueArrayView temp;
+
+// constructor
+	stencil(int N, DeviceView mass, DeviceView stiffness,
+			DeviceValueArrayView tempVector) :
+			super(N, N), N(N) {
+		massMatrix = mass;
+		stiffnessMatrix = stiffness;
+		temp = tempVector;
+	}
+
+// linear operator y = A*x
+	template<typename VectorType1, typename VectorType2>
+	void operator()(const VectorType1& x, VectorType2& y) const {
+// obtain a raw pointer to device memory
+		cusp::multiply(massMatrix, x, temp);
+		cusp::multiply(stiffnessMatrix, x, y);
+		cusp::blas::axpy(temp, y, 1);
+	}
+};
+
 ANCFSystem::ANCFSystem() {
+
+	// spike stuff
+	partitions = 1;
+	spike::Options  opts;
+	opts.safeFactorization = true;
+	mySolver = new SpikeSolver(partitions,opts);
+	mySpmv = new SpmvFunctor(lhs);
+	useSpike = false;
+	// end spike stuff
 
 	this->timeIndex = 0;
 	this->time = 0;
@@ -14,7 +54,7 @@ ANCFSystem::ANCFSystem() {
 	tol = 1e-7;
 	timeToSimulate = 0;
 	simTime = 0;
-	//detector.
+	fullJacobian = 1;
 
 	wt3.push_back(5.0 / 9.0);
 	wt3.push_back(8.0 / 9.0);
@@ -89,6 +129,12 @@ int ANCFSystem::setTolerance(double tolerance)
 int ANCFSystem::getTimeIndex()
 {
 	return this->timeIndex;
+}
+int ANCFSystem::setPartitions(int partitions)
+{
+	spike::Options  opts;
+	opts.safeFactorization = true;
+	mySolver = new SpikeSolver(partitions,opts);
 }
 
 vector<float3> addMassMatrix(double rho, double A, double l)
@@ -848,6 +894,10 @@ int ANCFSystem::initializeSystem()
 	// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
 	cusp::krylov::cg(lhs, delta, eAll, monitor);
 
+	// spike stuff
+	mySolver->setup(lhs);
+	// end spike stuff
+
 	//ANCFSystem::saveLHS();
 	//cusp::print(lhs);
 	//cin.get();
@@ -999,24 +1049,59 @@ int ANCFSystem::DoTimeStep()
 		cusp::blas::axpy(phiqlam,eTop,1);
 		cusp::blas::copy(phi,eBottom);
 
-		// set stopping criteria:
-		//  iteration_limit    = 100
-		//  relative_tolerance = 1e-5
-		cusp::default_monitor<double> monitor(eAll, 100, tol);
+		// SOLVE THE LINEAR SYSTEM
+		if(!useSpike)
+		{
+			if(fullJacobian)
+			{
+				// use full left-hand side matrix
+				stencil lhsStencil(anewAll.size(), lhs, stiffness, lhsVec);
 
-		// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
-		cusp::krylov::cg(lhs, delta, eAll, monitor);
+				// set stopping criteria:
+				//  iteration_limit    = 100
+				//  relative_tolerance = 1e-5
+				cusp::default_monitor<double> monitor(eAll, 1000, tol);
 
-//		// use full left-hand side matrix
-//		stencil lhsStencil(anewAll.size(),lhs,stiffness,lhsVec);
-//
-//		// set stopping criteria:
-//		//  iteration_limit    = 100
-//		//  relative_tolerance = 1e-5
-//		cusp::default_monitor<double> monitor(eAll,100,tol);
-//
-//		// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
-//		cusp::krylov::cg(lhsStencil, delta, eAll, monitor);
+				// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
+				cusp::krylov::cg(lhsStencil, delta, eAll, monitor);
+
+				cout << "Success: " << monitor.converged() << " Iterations: " << monitor.iteration_count() << " relResidualNorm: " << monitor.relative_tolerance() << endl;
+			}
+			else
+			{
+				// SOLVE USING CUSP CG
+				// set stopping criteria:
+				//  iteration_limit    = 100
+				//  relative_tolerance = 1e-5
+				cusp::default_monitor<double> monitor(eAll, 1000, tol);
+
+				// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
+				cusp::krylov::cg(lhs, delta, eAll, monitor);
+
+				cout << "Success: " << monitor.converged() << " Iterations: " << monitor.iteration_count() << " relResidualNorm: " << monitor.relative_tolerance() << endl;
+				//cin.get();
+				// END SOLVE USING CUSP CG
+			}
+		}
+
+		if(useSpike)
+		{
+			//SOLVE USING SPIKE
+			cusp::blas::fill(delta,0);
+			bool success = mySolver->solve(*mySpmv,eAll,delta);
+			spike::Stats stats = mySolver->getStats();
+			cout << "Success: " << success << " Iterations: " << stats.numIterations << " relResidualNorm: " << stats.relResidualNorm << endl;
+
+
+	//		cusp::io::write_matrix_market_file(lhs, "lhs.txt");
+			//cin.get();
+
+	//		(*mySpmv)(delta,eAll);
+	//		cusp::print(eAll);
+	//		cin.get();
+			//END SOLVE USING SPIKE
+		}
+		// END SOLVE THE LINEAR SYSTEM
 
 		// update anew
 		cusp::blas::axpy(delta,anewAll,-1);
@@ -1031,6 +1116,7 @@ int ANCFSystem::DoTimeStep()
 		// get norms
 		norm_e = cusp::blas::nrm2(eAll)/pow((double)elements.size(),2);
 		norm_d = cusp::blas::nrm2(delta)/pow((double)elements.size(),2);
+		cout << norm_e << " " << norm_d << endl;
 	}
 
 	cusp::copy(anew,a);
@@ -1050,7 +1136,7 @@ int ANCFSystem::DoTimeStep()
 	vParticle_h = vParticle_d;
 
 	//printf("Time: %f (it = %d, PTA pos = (%f, %.13f, %f)\n",this->getCurrentTime(),it,getXYZPosition(elements.size()-1,1).x,getXYZPosition(elements.size()-1,1).y,getXYZPosition(elements.size()-1,1).z);
-	printf("Time: %f (Simulation time = %f ms)\n",this->getCurrentTime(), elapsedTime);
+	printf("Time: %f (Simulation time = %f ms, it = %d)\n",this->getCurrentTime(), elapsedTime,it);
 
 	time+=h;
 	timeIndex++;

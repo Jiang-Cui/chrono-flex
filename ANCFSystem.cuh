@@ -14,8 +14,25 @@
 #include "Node.cuh"
 #include "Particle.cuh"
 
+#include <spike/solver.h>
+#include <spike/spmv.h>
+
+typedef typename spike::Solver<DeviceView, DeviceValueArrayView> SpikeSolver;
+typedef typename spike::SpmvCusp<DeviceView, DeviceValueArrayView> SpmvFunctor;
+
+#define GRAVITYx 0
+#define GRAVITYy -9.81
+#define GRAVITYz 0
+
 class ANCFSystem {
 public:
+
+	// spike stuff
+	int partitions;
+	SpikeSolver* mySolver;
+	SpmvFunctor* mySpmv;
+	bool useSpike;
+	// end spike stuff
 
 	ofstream posFile;
 	ofstream resultsFile1;
@@ -27,6 +44,7 @@ public:
 	double time; //current time
 	double simTime; //time to end simulation
 	double h; //time step
+	bool fullJacobian;
 
 	double alphaHHT;
 	double betaHHT;
@@ -223,6 +241,7 @@ public:
 	thrust::device_vector<uint> collisionIndices2_d;
 
 public:
+
 	ANCFSystem();
 	vector<Element> elements;
 	vector<Constraint> constraints;
@@ -249,6 +268,7 @@ public:
 	int setSimulationTime(double simTime);
 	int setTimeStep(double h);
 	int setTolerance(double tolerance);
+	int setPartitions(int partitions);
 	int addElement(Element* element);
 	int addParticle(Particle* particle);
 	int updateParticleDynamics();

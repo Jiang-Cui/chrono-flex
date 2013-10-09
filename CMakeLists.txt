@@ -59,7 +59,7 @@ find_package("OpenGL")
 
 # Example CUDA program
 enable_cuda_support()
-cuda_add_library(implicitbeamsgpu SHARED ANCF.cu ANCFintForce.cu include.cuh ANCFConstraints.cu ANCFContact.cu)
+cuda_add_library(implicitbeamsgpu SHARED ANCFSystem.cuh ANCFSystem.cu ANCFintForce.cu include.cuh ANCFConstraints.cu ANCFContact.cu)
 target_link_libraries(implicitbeamsgpu 
 	${GLUT_LIBRARIES}
 	${FREEGLUT_LIB}

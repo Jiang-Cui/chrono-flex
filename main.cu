@@ -1,10 +1,14 @@
 #include "include.cuh"
+#include "ANCFSystem.cuh"
+#include "Element.cuh"
+#include "Node.cuh"
+#include "Particle.cuh"
 
 bool updateDraw = 1;
 bool showSphere = 1;
 
 ANCFSystem sys;
-OpenGLCamera oglcamera(camreal3(0,0,-1),camreal3(0,0,0),camreal3(0,1,0),1);
+OpenGLCamera oglcamera(camreal3(1,5,0),camreal3(0,0,0),camreal3(0,1,0),.01);
 
 //RENDERING STUFF
 void changeSize(int w, int h) {
@@ -94,7 +98,7 @@ void drawAll()
 
 			double xiInc = 1/(static_cast<double>(xiDiv-1));
 
-			if(!showSphere)
+			if(showSphere)
 			{
 				glColor3f(0.0f,0.0f,1.0f);
 				for(int j=0;j<xiDiv;j++)
@@ -129,7 +133,8 @@ void drawAll()
 
 void renderSceneAll(){
 	if(OGL){
-		drawAll();
+		//if(sys.timeIndex%10==0)
+			drawAll();
 		sys.DoTimeStep();
 	}
 }
@@ -170,65 +175,133 @@ void CallBackMotionFunc(int x, int y) {
 
 int main(int argc, char** argv)
 {
-//	// begin file reader code
-sys.setTimeStep(1e-3);
-sys.setTolerance(1e-6);
-//	double EM = 2e9;
-//	double rho = 2800;
-//
-//	char *fName = "../data/sphere.ancf";
-//
-//	int nodeCount = 0;
-//	int beamCount = 0;
-//	int constraintCount = 0;
-//
-//	char line[100];
-//
-//	FILE *fp = fopen(fName, "r");
-//
-//	vector<float3> nodes;
-//	if (fp != NULL) {
-//		while (fgets(line, 99, fp)) {
-//			if (line[0] == 'n')
-//			{
-//				float x,y,z;
-//				sscanf(line, "%*c %f %f %f", &x,
-//						&y, &z);
-//				nodeCount++;
-//				float3 node = make_float3(x,y,z);
-//				nodes.push_back(node);
-//				//cout << x << " " << y << " " << z << endl;
-//			}
-//			else if (line[0] == 'b') {
-//				int n1, n2;
-//				sscanf(line, "%*c %d %d", &n1, &n2);
-//				beamCount++;
-//				float3 dir = normalize(nodes[n2-1]-nodes[n1-1]);
-//				Element element = Element(Node(nodes[n1-1],dir),Node(nodes[n2-1],dir));
-//				element.setRadius(.07);
-//				element.setElasticModulus(EM);
-//				element.setDensity(rho);
-//				sys.addElement(&element);
-//			}
-//			else if (line[0] == 'c') {
-//				int b1, n1, b2, n2;
-//				sscanf(line, "%*c %d %d %d %d", &b1, &n1, &b2, &n2);
-//				constraintCount++;
-//				sys.addConstraint_RelativeSpherical(sys.elements[b1-1],n1-1,sys.elements[b2-1],n2-1);
-//			}
-//		}
-//	}
-//	cout << nodeCount << " " << beamCount << " " << constraintCount << endl;
-//	sys.addConstraint_AbsoluteSpherical(sys.elements[100],0);
-//
-//	// end file reader code
+	sys.setTimeStep(1e-3);
+	sys.setTolerance(1e-6);
+	sys.useSpike = atoi(argv[1]);
+	sys.numContactPoints = 30;
+	sys.setPartitions(atoi(argv[2]));
 
-	if (argc == 1) {
+	if(argc == 3)
+	{
 		Element test = Element();
-		//test.setElasticModulus(2e7);
+		test.setElasticModulus(2e11);
 		sys.addElement(&test);
 		sys.addConstraint_AbsoluteSpherical(0);
-		sys.numContactPoints = 5;
+		sys.numContactPoints = 10;
+	}
+	else
+	{
+		sys.fullJacobian = 1;
+		double length = 1;
+		double r = .02;
+		double E = 2e6;
+		double rho = 2200;
+		double nu = .3;
+		int numElementsPerSide = atoi(argv[3]);
+		Element element;
+		int k = 0;
+		// Add elements in x-direction
+		for (int j = 0; j < numElementsPerSide+1; j++) {
+			for (int i = 0; i < numElementsPerSide; i++) {
+				element = Element(Node(i*length, 0, j*length, 1, 0, 0),
+								  Node((i+1)*length, 0, j*length, 1, 0, 0),
+								  r, nu, E, rho);
+				sys.addElement(&element);
+				k++;
+				if(k%100==0) printf("Elements %d\n",k);
+			}
+		}
+
+		// Add elements in z-direction
+		for (int j = 0; j < numElementsPerSide+1; j++) {
+			for (int i = 0; i < numElementsPerSide; i++) {
+				element = Element(Node(j*length, 0, i*length, 0, 0, 1),
+								  Node(j*length, 0, (i+1)*length, 0, 0, 1),
+								  r, nu, E, rho);
+				sys.addElement(&element);
+				k++;
+				if(k%100==0) printf("Elements %d\n",k);
+			}
+		}
+
+//		// Test Constraints
+//		for(int j=0; j < numElementsPerSide+1; j++)
+//		{
+//			sys.addConstraint_AbsoluteSpherical(sys.elements[j * numElementsPerSide], 0);
+//		}
+//
+//		for(int j=0; j < numElementsPerSide+1; j++)
+//		{
+//			sys.addConstraint_AbsoluteSpherical(sys.elements[j * numElementsPerSide+numElementsPerSide*(numElementsPerSide+1)], 0);
+//		}
+//		// End Test Constraints
+
+		sys.addConstraint_AbsoluteSpherical(sys.elements[0], 0);
+		sys.addConstraint_AbsoluteSpherical(sys.elements[2*numElementsPerSide*(numElementsPerSide+1)-numElementsPerSide], 0);
+		sys.addConstraint_AbsoluteSpherical(sys.elements[numElementsPerSide*(numElementsPerSide+1)-numElementsPerSide], 0);
+		sys.addConstraint_AbsoluteSpherical(sys.elements[2*numElementsPerSide*(numElementsPerSide+1)-1], 1);
+		sys.addConstraint_AbsoluteSpherical(sys.elements[numElementsPerSide*(numElementsPerSide+1)-1], 1);
+
+
+		// Constrain x-strands together
+		for(int j=0; j < numElementsPerSide+1; j++)
+		{
+			for(int i=0; i < numElementsPerSide-1; i++)
+			{
+				sys.addConstraint_RelativeFixed(
+						sys.elements[i+j*numElementsPerSide], 1,
+						sys.elements[i+1+j*numElementsPerSide], 0);
+			}
+		}
+
+		// Constrain z-strands together
+		int offset = numElementsPerSide*(numElementsPerSide+1);
+		for(int j=0; j < numElementsPerSide+1; j++)
+		{
+			for(int i=0; i < numElementsPerSide-1; i++)
+			{
+				sys.addConstraint_RelativeFixed(
+						sys.elements[i+offset+j*numElementsPerSide], 1,
+						sys.elements[i+offset+1+j*numElementsPerSide], 0);
+			}
+		}
+
+		// Constrain cross-streams together
+		for(int j=0; j < numElementsPerSide; j++)
+		{
+			for(int i=0; i < numElementsPerSide; i++)
+			{
+				sys.addConstraint_RelativeSpherical(
+						sys.elements[i*numElementsPerSide+j], 0,
+						sys.elements[offset+i+j*numElementsPerSide], 0);
+			}
+		}
+
+		for(int i=0; i < numElementsPerSide; i++)
+		{
+			sys.addConstraint_RelativeSpherical(
+						sys.elements[numElementsPerSide-1+numElementsPerSide*i], 1,
+						sys.elements[2*offset-numElementsPerSide+i], 0);
+		}
+
+		for(int i=0; i < numElementsPerSide; i++)
+		{
+			sys.addConstraint_RelativeSpherical(
+						sys.elements[numElementsPerSide*(numElementsPerSide+1)+numElementsPerSide-1+numElementsPerSide*i], 1,
+						sys.elements[numElementsPerSide*numElementsPerSide+i], 0);
+		}
+	}
+
+
+
+/*
+	if (argc == 2) {
+		sys.useSpike = atoi(argv[1]);
+		Element test = Element();
+		test.setElasticModulus(2e5);
+		sys.addElement(&test);
+		sys.addConstraint_AbsoluteSpherical(0);
+		sys.numContactPoints = 100;
 	} else {
 		Particle particle1 = Particle(60,70,make_float3(60,70,60),make_float3(0,0,0));
 		sys.addParticle(&particle1);
@@ -248,7 +321,7 @@ sys.setTolerance(1e-6);
 		sys.detector.setBinsPerAxis(make_uint3(70,10,70));
 		//sys.detector.activateDebugMode();
 		sys.numContactPoints = 6;
-		int numElements = atoi(argv[1]);
+		int numElements = atoi(argv[2]);
 		double length = .3*100;
 		//double EM = 2e7;
 		//double rho = 1150.0;
@@ -416,14 +489,14 @@ sys.setTolerance(1e-6);
 //			}
 //		}
 //	}
-
+*/
 	printf("Initializing system (%d beams, %d constraints)... ",sys.elements.size(),sys.constraints.size());
 	sys.initializeSystem();
 	printf("System Initialized (%d beams, %d constraints, %d equations)!\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
 
-//	while(sys.getCurrentTime()<=30)
+//	while(sys.timeIndex<=30)
 //	{
-//		if(sys.getTimeIndex()%100==0) sys.writeToFile();
+//		//if(sys.getTimeIndex()%100==0) sys.writeToFile();
 //		sys.DoTimeStep();
 //	}
 //	printf("Total time to simulate: %f [s]\n",sys.timeToSimulate);
@@ -443,43 +516,42 @@ sys.setTolerance(1e-6);
 	initScene();
 	glutMainLoop();
 
-/*
-#pragma omp parallel sections
-	{
-#pragma omp section
-		{
-			while(true)
-			{
-//				sys.clearAppliedForces();
-//				force.x = -forceMag*sys.p_h[element.getElementIndex()*12+10];
-//				force.y = forceMag*sys.p_h[element.getElementIndex()*12+9];
-//				force.z = 0;
-//				sys.addForce(&element,1,force);
-				sys.DoTimeStep();
-				//if(sys.timeIndex%100==0) sys.writeToFile();
-			}
-		}
-#pragma omp section
-		{
-			if(OGL){
-				glutInit(&argc, argv);
-				glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-				glutInitWindowPosition(0,0);
-				glutInitWindowSize(1024	,512);
-				glutCreateWindow("MAIN");
-				glutDisplayFunc(renderSceneAll);
-				glutIdleFunc(renderSceneAll);
-				glutReshapeFunc(changeSize);
-				glutIgnoreKeyRepeat(0);
-				glutKeyboardFunc(CallBackKeyboardFunc);
-				glutMouseFunc(CallBackMouseFunc);
-				glutMotionFunc(CallBackMotionFunc);
-				initScene();
-				glutMainLoop();
-			}
-		}
-	}
-	*/
+
+//#pragma omp parallel sections
+//	{
+//#pragma omp section
+//		{
+//			while(true)
+//			{
+////				sys.clearAppliedForces();
+////				force.x = -forceMag*sys.p_h[element.getElementIndex()*12+10];
+////				force.y = forceMag*sys.p_h[element.getElementIndex()*12+9];
+////				force.z = 0;
+////				sys.addForce(&element,1,force);
+//				sys.DoTimeStep();
+//				//if(sys.timeIndex%100==0) sys.writeToFile();
+//			}
+//		}
+//#pragma omp section
+//		{
+//			if(OGL){
+//				glutInit(&argc, argv);
+//				glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+//				glutInitWindowPosition(0,0);
+//				glutInitWindowSize(1024	,512);
+//				glutCreateWindow("MAIN");
+//				glutDisplayFunc(renderSceneAll);
+//				glutIdleFunc(renderSceneAll);
+//				glutReshapeFunc(changeSize);
+//				glutIgnoreKeyRepeat(0);
+//				glutKeyboardFunc(CallBackKeyboardFunc);
+//				glutMouseFunc(CallBackMouseFunc);
+//				glutMotionFunc(CallBackMotionFunc);
+//				initScene();
+//				glutMainLoop();
+//			}
+//		}
+//	}
 
 	return 0;
 }

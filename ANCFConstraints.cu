@@ -1,4 +1,5 @@
 #include "include.cuh"
+#include "ANCFSystem.cuh"
 
 int ANCFSystem::addConstraint_AbsoluteX(int nodeNum)
 {

@@ -1,4 +1,5 @@
 #include "include.cuh"
+#include "ANCFSystem.cuh"
 
 int ANCFSystem::updateBoundingBoxes_CPU()
 {
