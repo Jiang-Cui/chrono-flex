@@ -5,37 +5,6 @@
 
 #include <cusp/io/matrix_market.h>
 
-
-
-//// linear operator y = A*x (for CUSP)
-//class stencil: public cusp::linear_operator<double, cusp::device_memory> {
-//public:
-//	typedef cusp::linear_operator<double, cusp::device_memory> super;
-//
-//	int N;
-//	DeviceView massMatrix;
-//	DeviceView stiffnessMatrix;
-//	DeviceValueArrayView temp;
-//
-//// constructor
-//	stencil(int N, DeviceView mass, DeviceView stiffness,
-//			DeviceValueArrayView tempVector) :
-//			super(N, N), N(N) {
-//		massMatrix = mass;
-//		stiffnessMatrix = stiffness;
-//		temp = tempVector;
-//	}
-//
-//// linear operator y = A*x
-//	template<typename VectorType1, typename VectorType2>
-//	void operator()(const VectorType1& x, VectorType2& y) const {
-//// obtain a raw pointer to device memory
-//		cusp::multiply(massMatrix, x, temp);
-//		cusp::multiply(stiffnessMatrix, x, y);
-//		cusp::blas::axpy(temp, y, 1);
-//	}
-//};
-
 ANCFSystem::ANCFSystem() {
 
 	// spike stuff
@@ -45,7 +14,6 @@ ANCFSystem::ANCFSystem() {
 	mySolver = new SpikeSolver(partitions,opts);
 	mySpmv = new SpmvFunctor(lhs);
 	useSpike = false;
-	//m_spmv = new MySpmv(lhs,stiffness,lhsVec);
 	// end spike stuff
 
 	this->timeIndex = 0;
@@ -413,15 +381,12 @@ int ANCFSystem::addElement(Element* element)
 		v_h.push_back(0.0);
 		a_h.push_back(0.0);
 		anew_h.push_back(0.0);
-//		lhsVec_h.push_back(0.0);
-//		lhsVecStiffness_h.push_back(0.0);
 		fint_h.push_back(0.0);
 		fcon_h.push_back(0.0);
 		fapp_h.push_back(0.0);
 		phiqlam_h.push_back(0.0);
 		delta_h.push_back(0.0);
 		strainDerivative_h.push_back(0.0);
-		//fext_h.push_back(0);
 	}
 	strain_h.push_back(0.0);
 
@@ -456,10 +421,6 @@ int ANCFSystem::addElement(Element* element)
 
 	for(int i=0;i<mass.size();i++)
 	{
-//		lhsI_h.push_back(mass[i].x+12*(elements.size()-1));
-//		lhsJ_h.push_back(mass[i].y+12*(elements.size()-1));
-//		lhs_h.push_back(static_cast<double>(mass[i].z));
-
 		massI_h.push_back(mass[i].x+12*(elements.size()-1));
 		massJ_h.push_back(mass[i].y+12*(elements.size()-1));
 		mass_h.push_back(static_cast<double>(mass[i].z));
@@ -469,10 +430,6 @@ int ANCFSystem::addElement(Element* element)
 	{
 		for(int j=0;j<12;j++)
 		{
-//			stiffnessI_h.push_back(i+12*(elements.size()-1));
-//			stiffnessJ_h.push_back(j+12*(elements.size()-1));
-//			stiffness_h.push_back(0.0);
-
 			lhsI_h.push_back(i+12*(elements.size()-1));
 			lhsJ_h.push_back(j+12*(elements.size()-1));
 			lhs_h.push_back(0.0);
@@ -515,7 +472,6 @@ int ANCFSystem::clearAppliedForces()
 
 int ANCFSystem::updatePhiq()
 {
-	//printf("updatePhiq1\n");
 	for(int i=0;i<constraints.size();i++)
 	{
 		Constraint constraint = constraints[i];
@@ -531,8 +487,6 @@ int ANCFSystem::updatePhiq()
 			phiq_h.push_back(-1.0);
 		}
 	}
-
-	//printf("updatePhiq2\n");
 	phiqI_d = phiqI_h;
 	phiqJ_d = phiqJ_h;
 	phiq_d = phiq_h;
@@ -651,17 +605,6 @@ int ANCFSystem::initializeDevice()
 	pnew_d = p_h;
 	vnew_d = v_h;
 	anew_d = anew_h;
-
-//	// solver variables!
-//	lhsVec_d = lhsVec_h;
-//	lhsVecStiffness_d = lhsVecStiffness_h;
-//	rcg_d = lhsVec_h;
-//	pcg_d = lhsVec_h;
-//	rhatcg_d = lhsVec_h;
-//	phatcg_d = lhsVec_h;
-//	residual_d = lhsVec_h;
-//	// end solver variables
-
 	fext_d = fext_h;
 	fint_d = fint_h;
 	fapp_d = fapp_h;
@@ -687,17 +630,6 @@ int ANCFSystem::initializeDevice()
 	thrust::device_ptr<double> wrapped_device_pnew(CASTD1(pnew_d));
 	thrust::device_ptr<double> wrapped_device_vnew(CASTD1(vnew_d));
 	thrust::device_ptr<double> wrapped_device_anew(CASTD1(anew_d));
-//	thrust::device_ptr<double> wrapped_device_lhsVec(CASTD1(lhsVec_d));
-//	thrust::device_ptr<double> wrapped_device_lhsVecStiffness(CASTD1(lhsVecStiffness_d));
-
-//	// solver variables
-//	thrust::device_ptr<double> wrapped_device_rcg(CASTD1(rcg_d));
-//	thrust::device_ptr<double> wrapped_device_pcg(CASTD1(pcg_d));
-//	thrust::device_ptr<double> wrapped_device_rhatcg(CASTD1(rhatcg_d));
-//	thrust::device_ptr<double> wrapped_device_phatcg(CASTD1(phatcg_d));
-//	thrust::device_ptr<double> wrapped_device_residual(CASTD1(residual_d));
-//	// end solver variables
-
 	thrust::device_ptr<double> wrapped_device_fext(CASTD1(fext_d));
 	thrust::device_ptr<double> wrapped_device_fint(CASTD1(fint_d));
 	thrust::device_ptr<double> wrapped_device_fapp(CASTD1(fapp_d));
@@ -717,17 +649,6 @@ int ANCFSystem::initializeDevice()
 	vnew = DeviceValueArrayView(wrapped_device_vnew, wrapped_device_vnew + vnew_d.size());
 	anewAll = DeviceValueArrayView(wrapped_device_anew, wrapped_device_anew + anew_d.size());
 	anew = DeviceValueArrayView(wrapped_device_anew, wrapped_device_anew + 12*elements.size());
-//	lhsVec = DeviceValueArrayView(wrapped_device_lhsVec, wrapped_device_lhsVec + lhsVec_d.size());
-//	lhsVecStiffness = DeviceValueArrayView(wrapped_device_lhsVecStiffness, wrapped_device_lhsVecStiffness + lhsVecStiffness_d.size());
-
-//	// solver variables
-//	rcg = DeviceValueArrayView(wrapped_device_rcg, wrapped_device_rcg + rcg_d.size());
-//	pcg = DeviceValueArrayView(wrapped_device_pcg, wrapped_device_pcg + pcg_d.size());
-//	rhatcg = DeviceValueArrayView(wrapped_device_rhatcg, wrapped_device_rhatcg + rhatcg_d.size());
-//	phatcg = DeviceValueArrayView(wrapped_device_phatcg, wrapped_device_phatcg + phatcg_d.size());
-//	residual = DeviceValueArrayView(wrapped_device_residual, wrapped_device_residual + residual_d.size());
-//	// end solver variables
-
 	lambda = DeviceValueArrayView(wrapped_device_anew + 12*elements.size(), wrapped_device_anew + anew_d.size());
 	fext = DeviceValueArrayView(wrapped_device_fext, wrapped_device_fext + fext_d.size());
 	fint = DeviceValueArrayView(wrapped_device_fint, wrapped_device_fint + fint_d.size());
@@ -785,20 +706,6 @@ int ANCFSystem::createMass()
 	mass = DeviceView(p_h.size(), p_h.size(), mass_d.size(), row_indices, column_indices, values);
 	mass.sort_by_row();
 
-//	stiffnessI_d = stiffnessI_h;
-//	stiffnessJ_d = stiffnessJ_h;
-//	stiffness_d = stiffness_h;
-//
-//	thrust::device_ptr<int> wrapped_device_I_S(CASTI1(stiffnessI_d));
-//	DeviceIndexArrayView row_indices_S = DeviceIndexArrayView(wrapped_device_I_S, wrapped_device_I_S + stiffnessI_d.size());
-//
-//	thrust::device_ptr<int> wrapped_device_J_S(CASTI1(stiffnessJ_d));
-//	DeviceIndexArrayView column_indices_S = DeviceIndexArrayView(wrapped_device_J_S, wrapped_device_J_S + stiffnessJ_d.size());
-//
-//	thrust::device_ptr<double> wrapped_device_V_S(CASTD1(stiffness_d));
-//	DeviceValueArrayView values_S = DeviceValueArrayView(wrapped_device_V_S, wrapped_device_V_S + stiffness_d.size());
-//	stiffness = DeviceView(12*elements.size()+constraints.size(),12*elements.size()+constraints.size(), stiffness_d.size(), row_indices_S, column_indices_S, values_S);
-
 	return 0;
 }
 
@@ -813,8 +720,6 @@ int ANCFSystem::initializeSystem()
 		delta_h.push_back(0);
 		e_h.push_back(0);
 		anew_h.push_back(0);
-//		lhsVec_h.push_back(0);
-//		lhsVecStiffness_h.push_back(0);
 		phi_h.push_back(0);
 		constraintPairs_h.push_back(constraints[i].dofLoc);
 	}
@@ -893,14 +798,6 @@ int ANCFSystem::initializeSystem()
 
 	//cusp::blas::axpy(fint,eTop,-1);
 	cusp::blas::axpby(fext,fint,eTop,1,-1);
-
-//	// set stopping criteria:
-//	//  iteration_limit    = 100
-//	//  relative_tolerance = 1e-5
-//	cusp::default_monitor<double> monitor(eAll,1000,1e-7);
-//
-//	// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
-//	cusp::krylov::cg(lhs, delta, eAll, monitor);
 
 	// spike stuff
 	mySolver->setup(lhs);

@@ -157,7 +157,7 @@ void CallBackMotionFunc(int x, int y) {
 
 int main(int argc, char** argv)
 {
-	sys.setTimeStep(1e-2);
+	sys.setTimeStep(1e-3);
 	sys.setTolerance(1e-6);
 	sys.useSpike = atoi(argv[1]);
 	sys.numContactPoints = 30;

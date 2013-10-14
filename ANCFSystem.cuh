@@ -82,8 +82,6 @@ public:
 	DeviceValueArrayView eAll;
 	DeviceValueArrayView eTop;
 	DeviceValueArrayView eBottom;
-//	DeviceValueArrayView lhsVec;
-//	DeviceValueArrayView lhsVecStiffness;
 	DeviceValueArrayView p;
 	DeviceValueArrayView v;
 	DeviceValueArrayView a;
@@ -101,19 +99,9 @@ public:
 	DeviceValueArrayView phiqlam;
 	DeviceValueArrayView delta;
 
-//	// cusp vectors for conjugate gradient
-//	DeviceValueArrayView rcg;
-//	DeviceValueArrayView pcg;
-//
-//	// additional vectors for BiCGStab
-//	DeviceValueArrayView rhatcg;
-//	DeviceValueArrayView phatcg;
-//	DeviceValueArrayView residual;
-
 	DeviceView lhs;
 	DeviceView phiq;
 	DeviceView mass;
-	//DeviceView stiffness;
 
 	// host vectors
 	thrust::host_vector<double> e_h;
@@ -123,8 +111,6 @@ public:
 	thrust::host_vector<double> pnew_h;
 	thrust::host_vector<double> vnew_h;
 	thrust::host_vector<double> anew_h;
-	//thrust::host_vector<double> lhsVec_h;
-	//thrust::host_vector<double> lhsVecStiffness_h;
 	thrust::host_vector<double> fext_h;
 	thrust::host_vector<double> fint_h;
 	thrust::host_vector<double> fapp_h;
@@ -151,10 +137,6 @@ public:
 	thrust::host_vector<int> constraintsJ_h;
 	thrust::host_vector<double> constraints_h;
 
-	//thrust::host_vector<int> stiffnessI_h;
-	//thrust::host_vector<int> stiffnessJ_h;
-	//thrust::host_vector<double> stiffness_h;
-
 	// device vectors
 	thrust::device_vector<double> e_d;
 	thrust::device_vector<double> p_d;
@@ -163,8 +145,6 @@ public:
 	thrust::device_vector<double> pnew_d;
 	thrust::device_vector<double> vnew_d;
 	thrust::device_vector<double> anew_d;
-	//thrust::device_vector<double> lhsVec_d;
-	//thrust::device_vector<double> lhsVecStiffness_d;
 	thrust::device_vector<double> fext_d;
 	thrust::device_vector<double> fint_d;
 	thrust::device_vector<double> fapp_d;
@@ -174,14 +154,6 @@ public:
 	thrust::device_vector<double> phiqlam_d;
 	thrust::device_vector<double> delta_d;
 	thrust::device_vector<int2> constraintPairs_d;
-
-//	// cusp vectors for conjugate gradient
-//	thrust::device_vector<double> rcg_d;
-//	thrust::device_vector<double> pcg_d;
-//	thrust::device_vector<double> rhatcg_d;
-//	thrust::device_vector<double> phatcg_d;
-//	thrust::device_vector<double> residual_d;
-//	// end cusp cg stuff
 
 	thrust::device_vector<int> lhsI_d;
 	thrust::device_vector<int> lhsJ_d;
@@ -198,10 +170,6 @@ public:
 	thrust::device_vector<int> constraintsI_d;
 	thrust::device_vector<int> constraintsJ_d;
 	thrust::device_vector<double> constraints_d;
-
-	//thrust::device_vector<int> stiffnessI_d;
-	//thrust::device_vector<int> stiffnessJ_d;
-	//thrust::device_vector<double> stiffness_d;
 
 	thrust::host_vector<double> wt5;
 	thrust::host_vector<double> pt5;
