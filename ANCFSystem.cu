@@ -669,7 +669,7 @@ int ANCFSystem::initializeDevice()
 	thrust::device_ptr<double> wrapped_device_V(CASTD1(lhs_d));
 	DeviceValueArrayView values = DeviceValueArrayView(wrapped_device_V, wrapped_device_V + lhs_d.size());
 
-	lhs = DeviceView(anew_d.size(), anew_d.size(), lhs_d.size(), row_indices, column_indices, values);
+	lhs = DeviceView( anew_d.size(), anew_d.size(), lhs_d.size(), row_indices, column_indices, values);
 	//lhs.sort_by_row();
 
 	dimBlockConstraint.x = BLOCKDIMCONSTRAINT;
@@ -794,7 +794,7 @@ int ANCFSystem::initializeSystem()
 	//detector.setBoundingBoxPointer(&aabb_data_d);
 	//detector.detectPossibleCollisions();
 
-	ANCFSystem::updateInternalForces();
+	ANCFSystem::updateInternalForces(1);
 
 	//cusp::blas::axpy(fint,eTop,-1);
 	cusp::blas::axpby(fext,fint,eTop,1,-1);
@@ -803,9 +803,17 @@ int ANCFSystem::initializeSystem()
 	mySolver->setup(lhs);
 	// end spike stuff
 
+	//cusp::print(lhs);
+	//cusp::print(eAll);
+	//cin.get();
+
+	//lhs.sort_by_row();
 	cusp::blas::fill(delta,0);
 	bool success = mySolver->solve(*mySpmv,eAll,delta);
 	spike::Stats stats = mySolver->getStats();
+
+	//cusp::print(delta);
+	//cin.get();
 
 	cusp::copy(delta,anewAll);
 	cusp::copy(anew,a);
@@ -826,6 +834,7 @@ int ANCFSystem::DoTimeStep()
 
 	double norm_e=1;
 	double norm_d=1;
+	double norm_d_0 = 1;
 	int it = 0;
 
 	//ANCFSystem::updateParticleDynamics();
@@ -834,11 +843,11 @@ int ANCFSystem::DoTimeStep()
 	cusp::blas::axpbypcz(p,v,a,pnew,1,h,.5*h*h);
 	cusp::blas::axpby(v,a,vnew,1,h);
 
-	while(norm_e>tol&&norm_d>tol)
+	while(norm_d>tol)//while(norm_e>tol&&norm_d>tol)
 	{
 		it++;
 
-		ANCFSystem::updateInternalForces();
+		ANCFSystem::updateInternalForces(0);
 		ANCFSystem::updatePhi();
 
 		cusp::multiply(phiq,lambda,phiqlam);
@@ -862,8 +871,8 @@ int ANCFSystem::DoTimeStep()
 				cusp::default_monitor<double> monitor(eAll, 1000, tol);
 
 				// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
-				cusp::print(lhs);
-				cin.get();
+//				cusp::print(lhs);
+//				cin.get();
 				cusp::krylov::cg(lhs, delta, eAll, monitor);
 
 				cout << "Success: " << monitor.converged() << " Iterations: " << monitor.iteration_count() << " relResidualNorm: " << monitor.relative_tolerance() << endl;
@@ -879,7 +888,7 @@ int ANCFSystem::DoTimeStep()
 				// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
 				cusp::krylov::cg(lhs, delta, eAll, monitor);
 
-				cout << "Success: " << monitor.converged() << " Iterations: " << monitor.iteration_count() << " relResidualNorm: " << monitor.relative_tolerance() << endl;
+				cout << "Success: " << monitor.converged() << " Iterations: " << monitor.iteration_count() << " relResidualNorm: " << monitor.relative_tolerance() << " norm_d: ";
 				//cin.get();
 				// END SOLVE USING CUSP CG
 			}
@@ -892,11 +901,11 @@ int ANCFSystem::DoTimeStep()
 			bool success = mySolver->solve(*mySpmv,eAll,delta);
 			//bool success = mySolver->solve(*m_spmv,eAll,delta);
 			spike::Stats stats = mySolver->getStats();
-			//cout << "Success: " << success << " Iterations: " << stats.numIterations << " relResidualNorm: " << stats.relResidualNorm << endl;
+			cout << "Success: " << success << " Iterations: " << stats.numIterations << " relResidualNorm: " << stats.relResidualNorm << " norm_d: ";
 
 
-	//		cusp::io::write_matrix_market_file(lhs, "lhs.txt");
-			//cin.get();
+			cusp::io::write_matrix_market_file(lhs, "lhs.txt");
+			cin.get();
 
 	//		(*mySpmv)(delta,eAll);
 	//		cusp::print(eAll);
@@ -916,8 +925,10 @@ int ANCFSystem::DoTimeStep()
 		cusp::blas::axpy(p,pnew,1);
 
 		// get norms
-		norm_e = cusp::blas::nrm2(eAll)/pow((double)elements.size(),2);
-		norm_d = cusp::blas::nrm2(delta)/pow((double)elements.size(),2);
+		//norm_e = cusp::blas::nrm2(eAll)/pow((double)elements.size(),2);
+		if(it==1) norm_d_0 = cusp::blas::nrm2(delta);
+		norm_d = cusp::blas::nrm2(delta)/norm_d_0;
+		cout << norm_d << endl;
 		//cout << norm_e << " " << norm_d << endl;
 	}
 
@@ -939,6 +950,7 @@ int ANCFSystem::DoTimeStep()
 
 	//printf("Time: %f (it = %d, PTA pos = (%f, %.13f, %f)\n",this->getCurrentTime(),it,getXYZPosition(elements.size()-1,1).x,getXYZPosition(elements.size()-1,1).y,getXYZPosition(elements.size()-1,1).z);
 	printf("Time: %f (Simulation time = %f ms, it = %d)\n",this->getCurrentTime(), elapsedTime,it);
+	//printf("Pos = (%f, %.13f, %f)\n",getXYZPosition(elements.size()-1,1).x,getXYZPosition(elements.size()-1,1).y,getXYZPosition(elements.size()-1,1).z);
 
 	time+=h;
 	timeIndex++;

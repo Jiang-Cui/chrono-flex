@@ -165,18 +165,29 @@ int main(int argc, char** argv)
 
 	if(argc == 3)
 	{
-		Element test = Element();
-		test.setElasticModulus(2e7);
-		sys.addElement(&test);
+		double length = 1;
+		double r = 0.02;
+		double E = 2e7;
+		double rho = 2200;
+		double nu = .3;
+		Element element = Element(Node(0, 0, 0, 1, 0, 0), Node(length, 0, 0, 1, 0, 0), r, nu, E, rho);
+		sys.addElement(&element);
 		sys.addConstraint_AbsoluteSpherical(0);
 		sys.numContactPoints = 10;
+
+		for(int i=1;i<2;i++)
+		{
+			element = Element(Node(i*length, 0, 0, 1, 0, 0), Node((i+1)*length, 0, 0, 1, 0, 0), r, nu, E, rho);
+			sys.addElement(&element);
+			sys.addConstraint_RelativeFixed(sys.elements[i-1], 1,sys.elements[i], 0);
+		}
 	}
 	else
 	{
 		sys.fullJacobian = 1;
 		double length = 1;
 		double r = .02;
-		double E = 2e6;
+		double E = 2e7;
 		double rho = 2200;
 		double nu = .3;
 		int numElementsPerSide = atoi(argv[3]);

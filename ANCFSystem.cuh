@@ -281,7 +281,7 @@ public:
 	int createMass();
 	int initializeSystem();
 	int initializeDevice();
-	int updateInternalForces();
+	int updateInternalForces(int updateLhs);
 	int updateInternalForcesCPU();
 	int updateInternalForcesARMA();
 	int updatePhiq();
