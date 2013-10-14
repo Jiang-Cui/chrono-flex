@@ -113,24 +113,6 @@ using namespace std;
 #define CONSTRAINTRELATIVEDY2 16
 #define CONSTRAINTRELATIVEDZ2 17
 
-struct Material {
-	double r;
-	double nu;
-	double E;
-	double rho;
-	double l;
-	int numContactPoints;
-};
-
-struct MaterialParticle {
-	double r;
-	double nu;
-	double E;
-	double mass;
-	double massInverse;
-	int numContactPoints;
-};
-
 ////////////////////////Quaternion and Vector Code////////////////////////
 typedef double camreal;
 

@@ -149,12 +149,12 @@ __global__ void addInternalForceComponent(double* fint, double* strainD_shared, 
 		fint[10] += factor * strain * strainD_shared[10];
 		fint[11] += factor * strain * strainD_shared[11];
 
-		factor = factor * betah2;
-		for (int j = 0; j < 12; j++) {
-			for (int k = 0; k < 12; k++) {
-				stiffness[12 * j + k] += strainD_shared[j] * strainD_shared[k] * factor;
-			}
-		}
+//		factor = factor * betah2;
+//		for (int j = 0; j < 12; j++) {
+//			for (int k = 0; k < 12; k++) {
+//				stiffness[12 * j + k] += strainD_shared[j] * strainD_shared[k] * factor;
+//			}
+//		}
 
 	}
 }
@@ -177,195 +177,195 @@ __global__ void addMass(double* stiffness, Material* materials, int numElements)
 
 		j = 0;
 		k = 0;
-		stiffness[12 * j + k] = 0.13e2 / 0.35e2 * rho * A * l;
+		stiffness[12 * k + j] = 0.13e2 / 0.35e2 * rho * A * l;
 
 		j = 0;
 		k = 3;
-		stiffness[12 * j + k] = 0.11e2 / 0.210e3 * rho * A * l * l;
+		stiffness[12 * k + j] = 0.11e2 / 0.210e3 * rho * A * l * l;
 
 		j = 0;
 		k = 6;
-		stiffness[12 * j + k] = 0.9e1 / 0.70e2 * rho * A * l;
+		stiffness[12 * k + j] = 0.9e1 / 0.70e2 * rho * A * l;
 
 		j = 0;
 		k = 9;
-		stiffness[12 * j + k] = -0.13e2 / 0.420e3 * rho * A * l * l;
+		stiffness[12 * k + j] = -0.13e2 / 0.420e3 * rho * A * l * l;
 
 		j = 1;
 		k = 1;
-		stiffness[12 * j + k] = 0.13e2 / 0.35e2 * rho * A * l;
+		stiffness[12 * k + j] = 0.13e2 / 0.35e2 * rho * A * l;
 
 		j = 1;
 		k = 4;
-		stiffness[12 * j + k] = 0.11e2 / 0.210e3 * rho * A * l * l;
+		stiffness[12 * k + j] = 0.11e2 / 0.210e3 * rho * A * l * l;
 
 		j = 1;
 		k = 7;
-		stiffness[12 * j + k] = 0.9e1 / 0.70e2 * rho * A * l;
+		stiffness[12 * k + j] = 0.9e1 / 0.70e2 * rho * A * l;
 
 		j = 1;
 		k = 10;
-		stiffness[12 * j + k] = -0.13e2 / 0.420e3 * rho * A * l * l;
+		stiffness[12 * k + j] = -0.13e2 / 0.420e3 * rho * A * l * l;
 
 		j = 2;
 		k = 2;
-		stiffness[12 * j + k] = 0.13e2 / 0.35e2 * rho * A * l;
+		stiffness[12 * k + j] = 0.13e2 / 0.35e2 * rho * A * l;
 
 		j = 2;
 		k = 5;
-		stiffness[12 * j + k] = 0.11e2 / 0.210e3 * rho * A * l * l;
+		stiffness[12 * k + j] = 0.11e2 / 0.210e3 * rho * A * l * l;
 
 		j = 2;
 		k = 8;
-		stiffness[12 * j + k] = 0.9e1 / 0.70e2 * rho * A * l;
+		stiffness[12 * k + j] = 0.9e1 / 0.70e2 * rho * A * l;
 
 		j = 2;
 		k = 11;
-		stiffness[12 * j + k] = -0.13e2 / 0.420e3 * rho * A * l * l;
+		stiffness[12 * k + j] = -0.13e2 / 0.420e3 * rho * A * l * l;
 
 		j = 3;
 		k = 0;
-		stiffness[12 * j + k] = 0.11e2 / 0.210e3 * rho * A * l * l;
+		stiffness[12 * k + j] = 0.11e2 / 0.210e3 * rho * A * l * l;
 
 		j = 3;
 		k = 3;
-		stiffness[12 * j + k] = rho * A * l * l * l / 0.105e3;
+		stiffness[12 * k + j] = rho * A * l * l * l / 0.105e3;
 
 		j = 3;
 		k = 6;
-		stiffness[12 * j + k] = 0.13e2 / 0.420e3 * rho * A * l * l;
+		stiffness[12 * k + j] = 0.13e2 / 0.420e3 * rho * A * l * l;
 
 		j = 3;
 		k = 9;
-		stiffness[12 * j + k] = -rho * A * l * l * l / 0.140e3;
+		stiffness[12 * k + j] = -rho * A * l * l * l / 0.140e3;
 
 		j = 4;
 		k = 1;
-		stiffness[12 * j + k] = 0.11e2 / 0.210e3 * rho * A * l * l;
+		stiffness[12 * k + j] = 0.11e2 / 0.210e3 * rho * A * l * l;
 
 		j = 4;
 		k = 4;
-		stiffness[12 * j + k] = rho * A * l * l * l / 0.105e3;
+		stiffness[12 * k + j] = rho * A * l * l * l / 0.105e3;
 
 		j = 4;
 		k = 7;
-		stiffness[12 * j + k] = 0.13e2 / 0.420e3 * rho * A * l * l;
+		stiffness[12 * k + j] = 0.13e2 / 0.420e3 * rho * A * l * l;
 
 		j = 4;
 		k = 10;
-		stiffness[12 * j + k] = -rho * A * l * l * l / 0.140e3;
+		stiffness[12 * k + j] = -rho * A * l * l * l / 0.140e3;
 
 		j = 5;
 		k = 2;
-		stiffness[12 * j + k] = 0.11e2 / 0.210e3 * rho * A * l * l;
+		stiffness[12 * k + j] = 0.11e2 / 0.210e3 * rho * A * l * l;
 
 		j = 5;
 		k = 5;
-		stiffness[12 * j + k] = rho * A * l * l * l / 0.105e3;
+		stiffness[12 * k + j] = rho * A * l * l * l / 0.105e3;
 
 		j = 5;
 		k = 8;
-		stiffness[12 * j + k] = 0.13e2 / 0.420e3 * rho * A * l * l;
+		stiffness[12 * k + j] = 0.13e2 / 0.420e3 * rho * A * l * l;
 
 		j = 5;
 		k = 11;
-		stiffness[12 * j + k] = -rho * A * l * l * l / 0.140e3;
+		stiffness[12 * k + j] = -rho * A * l * l * l / 0.140e3;
 
 		j = 6;
 		k = 0;
-		stiffness[12 * j + k] = 0.9e1 / 0.70e2 * rho * A * l;
+		stiffness[12 * k + j] = 0.9e1 / 0.70e2 * rho * A * l;
 
 		j = 6;
 		k = 3;
-		stiffness[12 * j + k] = 0.13e2 / 0.420e3 * rho * A * l * l;
+		stiffness[12 * k + j] = 0.13e2 / 0.420e3 * rho * A * l * l;
 
 		j = 6;
 		k = 6;
-		stiffness[12 * j + k] = 0.13e2 / 0.35e2 * rho * A * l;
+		stiffness[12 * k + j] = 0.13e2 / 0.35e2 * rho * A * l;
 
 		j = 6;
 		k = 9;
-		stiffness[12 * j + k] = -0.11e2 / 0.210e3 * rho * A * l * l;
+		stiffness[12 * k + j] = -0.11e2 / 0.210e3 * rho * A * l * l;
 
 		j = 7;
 		k = 1;
-		stiffness[12 * j + k] = 0.9e1 / 0.70e2 * rho * A * l;
+		stiffness[12 * k + j] = 0.9e1 / 0.70e2 * rho * A * l;
 
 		j = 7;
 		k = 4;
-		stiffness[12 * j + k] = 0.13e2 / 0.420e3 * rho * A * l * l;
+		stiffness[12 * k + j] = 0.13e2 / 0.420e3 * rho * A * l * l;
 
 		j = 7;
 		k = 7;
-		stiffness[12 * j + k] = 0.13e2 / 0.35e2 * rho * A * l;
+		stiffness[12 * k + j] = 0.13e2 / 0.35e2 * rho * A * l;
 
 		j = 7;
 		k = 10;
-		stiffness[12 * j + k] = -0.11e2 / 0.210e3 * rho * A * l * l;
+		stiffness[12 * k + j] = -0.11e2 / 0.210e3 * rho * A * l * l;
 
 		j = 8;
 		k = 2;
-		stiffness[12 * j + k] = 0.9e1 / 0.70e2 * rho * A * l;
+		stiffness[12 * k + j] = 0.9e1 / 0.70e2 * rho * A * l;
 
 		j = 8;
 		k = 5;
-		stiffness[12 * j + k] = 0.13e2 / 0.420e3 * rho * A * l * l;
+		stiffness[12 * k + j] = 0.13e2 / 0.420e3 * rho * A * l * l;
 
 		j = 8;
 		k = 8;
-		stiffness[12 * j + k] = 0.13e2 / 0.35e2 * rho * A * l;
+		stiffness[12 * k + j] = 0.13e2 / 0.35e2 * rho * A * l;
 
 		j = 8;
 		k = 11;
-		stiffness[12 * j + k] = -0.11e2 / 0.210e3 * rho * A * l * l;
+		stiffness[12 * k + j] = -0.11e2 / 0.210e3 * rho * A * l * l;
 
 		j = 9;
 		k = 0;
-		stiffness[12 * j + k] = -0.13e2 / 0.420e3 * rho * A * l * l;
+		stiffness[12 * k + j] = -0.13e2 / 0.420e3 * rho * A * l * l;
 
 		j = 9;
 		k = 3;
-		stiffness[12 * j + k] = -rho * A * l * l * l / 0.140e3;
+		stiffness[12 * k + j] = -rho * A * l * l * l / 0.140e3;
 
 		j = 9;
 		k = 6;
-		stiffness[12 * j + k] = -0.11e2 / 0.210e3 * rho * A * l * l;
+		stiffness[12 * k + j] = -0.11e2 / 0.210e3 * rho * A * l * l;
 
 		j = 9;
 		k = 9;
-		stiffness[12 * j + k] = rho * A * l * l * l / 0.105e3;
+		stiffness[12 * k + j] = rho * A * l * l * l / 0.105e3;
 
 		j = 10;
 		k = 1;
-		stiffness[12 * j + k] = -0.13e2 / 0.420e3 * rho * A * l * l;
+		stiffness[12 * k + j] = -0.13e2 / 0.420e3 * rho * A * l * l;
 
 		j = 10;
 		k = 4;
-		stiffness[12 * j + k] = -rho * A * l * l * l / 0.140e3;
+		stiffness[12 * k + j] = -rho * A * l * l * l / 0.140e3;
 
 		j = 10;
 		k = 7;
-		stiffness[12 * j + k] = -0.11e2 / 0.210e3 * rho * A * l * l;
+		stiffness[12 * k + j] = -0.11e2 / 0.210e3 * rho * A * l * l;
 
 		j = 10;
 		k = 10;
-		stiffness[12 * j + k] = rho * A * l * l * l / 0.105e3;
+		stiffness[12 * k + j] = rho * A * l * l * l / 0.105e3;
 
 		j = 11;
 		k = 2;
-		stiffness[12 * j + k] = -0.13e2 / 0.420e3 * rho * A * l * l;
+		stiffness[12 * k + j] = -0.13e2 / 0.420e3 * rho * A * l * l;
 
 		j = 11;
 		k = 5;
-		stiffness[12 * j + k] = -rho * A * l * l * l / 0.140e3;
+		stiffness[12 * k + j] = -rho * A * l * l * l / 0.140e3;
 
 		j = 11;
 		k = 8;
-		stiffness[12 * j + k] = -0.11e2 / 0.210e3 * rho * A * l * l;
+		stiffness[12 * k + j] = -0.11e2 / 0.210e3 * rho * A * l * l;
 
 		j = 11;
 		k = 11;
-		stiffness[12 * j + k] = rho * A * l * l * l / 0.105e3;
+		stiffness[12 * k + j] = rho * A * l * l * l / 0.105e3;
 	}
 }
 

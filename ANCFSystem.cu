@@ -413,8 +413,8 @@ int ANCFSystem::addElement(Element* element)
 		v_h.push_back(0.0);
 		a_h.push_back(0.0);
 		anew_h.push_back(0.0);
-		lhsVec_h.push_back(0.0);
-		lhsVecStiffness_h.push_back(0.0);
+//		lhsVec_h.push_back(0.0);
+//		lhsVecStiffness_h.push_back(0.0);
 		fint_h.push_back(0.0);
 		fcon_h.push_back(0.0);
 		fapp_h.push_back(0.0);
@@ -652,15 +652,15 @@ int ANCFSystem::initializeDevice()
 	vnew_d = v_h;
 	anew_d = anew_h;
 
-	// solver variables!
-	lhsVec_d = lhsVec_h;
-	lhsVecStiffness_d = lhsVecStiffness_h;
-	rcg_d = lhsVec_h;
-	pcg_d = lhsVec_h;
-	rhatcg_d = lhsVec_h;
-	phatcg_d = lhsVec_h;
-	residual_d = lhsVec_h;
-	// end solver variables
+//	// solver variables!
+//	lhsVec_d = lhsVec_h;
+//	lhsVecStiffness_d = lhsVecStiffness_h;
+//	rcg_d = lhsVec_h;
+//	pcg_d = lhsVec_h;
+//	rhatcg_d = lhsVec_h;
+//	phatcg_d = lhsVec_h;
+//	residual_d = lhsVec_h;
+//	// end solver variables
 
 	fext_d = fext_h;
 	fint_d = fint_h;
@@ -687,16 +687,16 @@ int ANCFSystem::initializeDevice()
 	thrust::device_ptr<double> wrapped_device_pnew(CASTD1(pnew_d));
 	thrust::device_ptr<double> wrapped_device_vnew(CASTD1(vnew_d));
 	thrust::device_ptr<double> wrapped_device_anew(CASTD1(anew_d));
-	thrust::device_ptr<double> wrapped_device_lhsVec(CASTD1(lhsVec_d));
-	thrust::device_ptr<double> wrapped_device_lhsVecStiffness(CASTD1(lhsVecStiffness_d));
+//	thrust::device_ptr<double> wrapped_device_lhsVec(CASTD1(lhsVec_d));
+//	thrust::device_ptr<double> wrapped_device_lhsVecStiffness(CASTD1(lhsVecStiffness_d));
 
-	// solver variables
-	thrust::device_ptr<double> wrapped_device_rcg(CASTD1(rcg_d));
-	thrust::device_ptr<double> wrapped_device_pcg(CASTD1(pcg_d));
-	thrust::device_ptr<double> wrapped_device_rhatcg(CASTD1(rhatcg_d));
-	thrust::device_ptr<double> wrapped_device_phatcg(CASTD1(phatcg_d));
-	thrust::device_ptr<double> wrapped_device_residual(CASTD1(residual_d));
-	// end solver variables
+//	// solver variables
+//	thrust::device_ptr<double> wrapped_device_rcg(CASTD1(rcg_d));
+//	thrust::device_ptr<double> wrapped_device_pcg(CASTD1(pcg_d));
+//	thrust::device_ptr<double> wrapped_device_rhatcg(CASTD1(rhatcg_d));
+//	thrust::device_ptr<double> wrapped_device_phatcg(CASTD1(phatcg_d));
+//	thrust::device_ptr<double> wrapped_device_residual(CASTD1(residual_d));
+//	// end solver variables
 
 	thrust::device_ptr<double> wrapped_device_fext(CASTD1(fext_d));
 	thrust::device_ptr<double> wrapped_device_fint(CASTD1(fint_d));
@@ -717,16 +717,16 @@ int ANCFSystem::initializeDevice()
 	vnew = DeviceValueArrayView(wrapped_device_vnew, wrapped_device_vnew + vnew_d.size());
 	anewAll = DeviceValueArrayView(wrapped_device_anew, wrapped_device_anew + anew_d.size());
 	anew = DeviceValueArrayView(wrapped_device_anew, wrapped_device_anew + 12*elements.size());
-	lhsVec = DeviceValueArrayView(wrapped_device_lhsVec, wrapped_device_lhsVec + lhsVec_d.size());
-	lhsVecStiffness = DeviceValueArrayView(wrapped_device_lhsVecStiffness, wrapped_device_lhsVecStiffness + lhsVecStiffness_d.size());
+//	lhsVec = DeviceValueArrayView(wrapped_device_lhsVec, wrapped_device_lhsVec + lhsVec_d.size());
+//	lhsVecStiffness = DeviceValueArrayView(wrapped_device_lhsVecStiffness, wrapped_device_lhsVecStiffness + lhsVecStiffness_d.size());
 
-	// solver variables
-	rcg = DeviceValueArrayView(wrapped_device_rcg, wrapped_device_rcg + rcg_d.size());
-	pcg = DeviceValueArrayView(wrapped_device_pcg, wrapped_device_pcg + pcg_d.size());
-	rhatcg = DeviceValueArrayView(wrapped_device_rhatcg, wrapped_device_rhatcg + rhatcg_d.size());
-	phatcg = DeviceValueArrayView(wrapped_device_phatcg, wrapped_device_phatcg + phatcg_d.size());
-	residual = DeviceValueArrayView(wrapped_device_residual, wrapped_device_residual + residual_d.size());
-	// end solver variables
+//	// solver variables
+//	rcg = DeviceValueArrayView(wrapped_device_rcg, wrapped_device_rcg + rcg_d.size());
+//	pcg = DeviceValueArrayView(wrapped_device_pcg, wrapped_device_pcg + pcg_d.size());
+//	rhatcg = DeviceValueArrayView(wrapped_device_rhatcg, wrapped_device_rhatcg + rhatcg_d.size());
+//	phatcg = DeviceValueArrayView(wrapped_device_phatcg, wrapped_device_phatcg + phatcg_d.size());
+//	residual = DeviceValueArrayView(wrapped_device_residual, wrapped_device_residual + residual_d.size());
+//	// end solver variables
 
 	lambda = DeviceValueArrayView(wrapped_device_anew + 12*elements.size(), wrapped_device_anew + anew_d.size());
 	fext = DeviceValueArrayView(wrapped_device_fext, wrapped_device_fext + fext_d.size());
@@ -813,8 +813,8 @@ int ANCFSystem::initializeSystem()
 		delta_h.push_back(0);
 		e_h.push_back(0);
 		anew_h.push_back(0);
-		lhsVec_h.push_back(0);
-		lhsVecStiffness_h.push_back(0);
+//		lhsVec_h.push_back(0);
+//		lhsVecStiffness_h.push_back(0);
 		phi_h.push_back(0);
 		constraintPairs_h.push_back(constraints[i].dofLoc);
 	}
@@ -965,6 +965,8 @@ int ANCFSystem::DoTimeStep()
 				cusp::default_monitor<double> monitor(eAll, 1000, tol);
 
 				// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
+				cusp::print(lhs);
+				cin.get();
 				cusp::krylov::cg(lhs, delta, eAll, monitor);
 
 				cout << "Success: " << monitor.converged() << " Iterations: " << monitor.iteration_count() << " relResidualNorm: " << monitor.relative_tolerance() << endl;
