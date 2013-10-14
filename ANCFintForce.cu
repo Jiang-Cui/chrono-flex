@@ -136,9 +136,6 @@ __global__ void addInternalForceComponent(double* fint, double* strainD_shared, 
 		double factor = wtl*A*E*a*.5;
 		if(check) factor = wtl*I*E*a*.5;
 
-//		__shared__ double strainD_shared[12];
-//		for(int j=0;j<12;j++) strainD_shared[j] = strainD[j];
-
 		fint[0] += factor * strain * strainD_shared[0];
 		fint[1] += factor * strain * strainD_shared[1];
 		fint[2] += factor * strain * strainD_shared[2];
@@ -155,38 +152,240 @@ __global__ void addInternalForceComponent(double* fint, double* strainD_shared, 
 		factor = factor * betah2;
 		for (int j = 0; j < 12; j++) {
 			for (int k = 0; k < 12; k++) {
-				stiffness[12 * j + k] += strainD_shared[j] * strainD_shared[k]
-						* factor;
+				stiffness[12 * j + k] += strainD_shared[j] * strainD_shared[k] * factor;
 			}
 		}
 
 	}
 }
 
+__global__ void addMass(double* stiffness, Material* materials, int numElements)
+{
+	int i = threadIdx.x+blockIdx.x*blockDim.x;
+
+	if(i<numElements)
+	{
+		Material material = materials[i];
+		double l = material.l;
+		double r = material.r;
+		double A = PI*r*r;
+		double rho = material.rho;
+		int j = 0;
+		int k = 0;
+
+		stiffness = &stiffness[12*12*i];
+
+		j = 0;
+		k = 0;
+		stiffness[12 * j + k] = 0.13e2 / 0.35e2 * rho * A * l;
+
+		j = 0;
+		k = 3;
+		stiffness[12 * j + k] = 0.11e2 / 0.210e3 * rho * A * l * l;
+
+		j = 0;
+		k = 6;
+		stiffness[12 * j + k] = 0.9e1 / 0.70e2 * rho * A * l;
+
+		j = 0;
+		k = 9;
+		stiffness[12 * j + k] = -0.13e2 / 0.420e3 * rho * A * l * l;
+
+		j = 1;
+		k = 1;
+		stiffness[12 * j + k] = 0.13e2 / 0.35e2 * rho * A * l;
+
+		j = 1;
+		k = 4;
+		stiffness[12 * j + k] = 0.11e2 / 0.210e3 * rho * A * l * l;
+
+		j = 1;
+		k = 7;
+		stiffness[12 * j + k] = 0.9e1 / 0.70e2 * rho * A * l;
+
+		j = 1;
+		k = 10;
+		stiffness[12 * j + k] = -0.13e2 / 0.420e3 * rho * A * l * l;
+
+		j = 2;
+		k = 2;
+		stiffness[12 * j + k] = 0.13e2 / 0.35e2 * rho * A * l;
+
+		j = 2;
+		k = 5;
+		stiffness[12 * j + k] = 0.11e2 / 0.210e3 * rho * A * l * l;
+
+		j = 2;
+		k = 8;
+		stiffness[12 * j + k] = 0.9e1 / 0.70e2 * rho * A * l;
+
+		j = 2;
+		k = 11;
+		stiffness[12 * j + k] = -0.13e2 / 0.420e3 * rho * A * l * l;
+
+		j = 3;
+		k = 0;
+		stiffness[12 * j + k] = 0.11e2 / 0.210e3 * rho * A * l * l;
+
+		j = 3;
+		k = 3;
+		stiffness[12 * j + k] = rho * A * l * l * l / 0.105e3;
+
+		j = 3;
+		k = 6;
+		stiffness[12 * j + k] = 0.13e2 / 0.420e3 * rho * A * l * l;
+
+		j = 3;
+		k = 9;
+		stiffness[12 * j + k] = -rho * A * l * l * l / 0.140e3;
+
+		j = 4;
+		k = 1;
+		stiffness[12 * j + k] = 0.11e2 / 0.210e3 * rho * A * l * l;
+
+		j = 4;
+		k = 4;
+		stiffness[12 * j + k] = rho * A * l * l * l / 0.105e3;
+
+		j = 4;
+		k = 7;
+		stiffness[12 * j + k] = 0.13e2 / 0.420e3 * rho * A * l * l;
+
+		j = 4;
+		k = 10;
+		stiffness[12 * j + k] = -rho * A * l * l * l / 0.140e3;
+
+		j = 5;
+		k = 2;
+		stiffness[12 * j + k] = 0.11e2 / 0.210e3 * rho * A * l * l;
+
+		j = 5;
+		k = 5;
+		stiffness[12 * j + k] = rho * A * l * l * l / 0.105e3;
+
+		j = 5;
+		k = 8;
+		stiffness[12 * j + k] = 0.13e2 / 0.420e3 * rho * A * l * l;
+
+		j = 5;
+		k = 11;
+		stiffness[12 * j + k] = -rho * A * l * l * l / 0.140e3;
+
+		j = 6;
+		k = 0;
+		stiffness[12 * j + k] = 0.9e1 / 0.70e2 * rho * A * l;
+
+		j = 6;
+		k = 3;
+		stiffness[12 * j + k] = 0.13e2 / 0.420e3 * rho * A * l * l;
+
+		j = 6;
+		k = 6;
+		stiffness[12 * j + k] = 0.13e2 / 0.35e2 * rho * A * l;
+
+		j = 6;
+		k = 9;
+		stiffness[12 * j + k] = -0.11e2 / 0.210e3 * rho * A * l * l;
+
+		j = 7;
+		k = 1;
+		stiffness[12 * j + k] = 0.9e1 / 0.70e2 * rho * A * l;
+
+		j = 7;
+		k = 4;
+		stiffness[12 * j + k] = 0.13e2 / 0.420e3 * rho * A * l * l;
+
+		j = 7;
+		k = 7;
+		stiffness[12 * j + k] = 0.13e2 / 0.35e2 * rho * A * l;
+
+		j = 7;
+		k = 10;
+		stiffness[12 * j + k] = -0.11e2 / 0.210e3 * rho * A * l * l;
+
+		j = 8;
+		k = 2;
+		stiffness[12 * j + k] = 0.9e1 / 0.70e2 * rho * A * l;
+
+		j = 8;
+		k = 5;
+		stiffness[12 * j + k] = 0.13e2 / 0.420e3 * rho * A * l * l;
+
+		j = 8;
+		k = 8;
+		stiffness[12 * j + k] = 0.13e2 / 0.35e2 * rho * A * l;
+
+		j = 8;
+		k = 11;
+		stiffness[12 * j + k] = -0.11e2 / 0.210e3 * rho * A * l * l;
+
+		j = 9;
+		k = 0;
+		stiffness[12 * j + k] = -0.13e2 / 0.420e3 * rho * A * l * l;
+
+		j = 9;
+		k = 3;
+		stiffness[12 * j + k] = -rho * A * l * l * l / 0.140e3;
+
+		j = 9;
+		k = 6;
+		stiffness[12 * j + k] = -0.11e2 / 0.210e3 * rho * A * l * l;
+
+		j = 9;
+		k = 9;
+		stiffness[12 * j + k] = rho * A * l * l * l / 0.105e3;
+
+		j = 10;
+		k = 1;
+		stiffness[12 * j + k] = -0.13e2 / 0.420e3 * rho * A * l * l;
+
+		j = 10;
+		k = 4;
+		stiffness[12 * j + k] = -rho * A * l * l * l / 0.140e3;
+
+		j = 10;
+		k = 7;
+		stiffness[12 * j + k] = -0.11e2 / 0.210e3 * rho * A * l * l;
+
+		j = 10;
+		k = 10;
+		stiffness[12 * j + k] = rho * A * l * l * l / 0.105e3;
+
+		j = 11;
+		k = 2;
+		stiffness[12 * j + k] = -0.13e2 / 0.420e3 * rho * A * l * l;
+
+		j = 11;
+		k = 5;
+		stiffness[12 * j + k] = -rho * A * l * l * l / 0.140e3;
+
+		j = 11;
+		k = 8;
+		stiffness[12 * j + k] = -0.11e2 / 0.210e3 * rho * A * l * l;
+
+		j = 11;
+		k = 11;
+		stiffness[12 * j + k] = rho * A * l * l * l / 0.105e3;
+	}
+}
+
 int ANCFSystem::updateInternalForces()
 {
 	thrust::fill(fint_d.begin(),fint_d.end(),0.0); //Clear internal forces
-	thrust::fill(stiffness_d.begin(),stiffness_d.end(),0.0); //Clear internal forces
-//	print(stiffness);
-//	cin.get();
+	thrust::fill_n(lhs_d.begin(),elements.size()*12*12,0.0); //Clear internal forces
+	addMass<<<dimGridElement,dimBlockElement>>>(CASTD1(lhs_d),CASTM1(materials_d),elements.size());
 
 	for(int j=0;j<pt5.size();j++)
 	{
 		strainDerivativeUpdate<<<dimGridElement,dimBlockElement>>>(pt5[j],CASTD1(pnew_d),CASTD1(strain_d),CASTD1(strainDerivative_d),CASTD1(Sx_d),CASTM1(materials_d),elements.size());
-		addInternalForceComponent<<<dimGridElement,dimBlockElement>>>(CASTD1(fint_d),CASTD1(strainDerivative_d),CASTD1(strain_d),CASTD1(stiffness_d),CASTM1(materials_d),wt5[j],betaHHT*h*h,elements.size(),0);
-//		print(stiffness);
-//		cin.get();
+		addInternalForceComponent<<<dimGridElement,dimBlockElement>>>(CASTD1(fint_d),CASTD1(strainDerivative_d),CASTD1(strain_d),CASTD1(lhs_d),CASTM1(materials_d),wt5[j],betaHHT*h*h,elements.size(),0);
 	}
 
 	for(int j=0;j<pt3.size();j++)
 	{
 		curvatDerivUpdate<<<dimGridElement,dimBlockElement>>>(pt3[j],CASTD1(pnew_d),CASTD1(strain_d),CASTD1(strainDerivative_d),CASTD1(Sx_d),CASTD1(Sxx_d),CASTM1(materials_d),elements.size());
-		addInternalForceComponent<<<dimGridElement,dimBlockElement>>>(CASTD1(fint_d),CASTD1(strainDerivative_d),CASTD1(strain_d),CASTD1(stiffness_d),CASTM1(materials_d),wt3[j],betaHHT*h*h,elements.size(),1);
-//		print(stiffness);
-//		cin.get();
+		addInternalForceComponent<<<dimGridElement,dimBlockElement>>>(CASTD1(fint_d),CASTD1(strainDerivative_d),CASTD1(strain_d),CASTD1(lhs_d),CASTM1(materials_d),wt3[j],betaHHT*h*h,elements.size(),1);
 	}
-	//print(stiffness);
-	//cin.get();
 
 	return 0;
 }

@@ -39,13 +39,6 @@
 using namespace std;
 //using namespace arma;
 
-// use array1d_view to wrap the individual arrays
-typedef typename cusp::array1d_view<thrust::device_ptr<int> > DeviceIndexArrayView;
-typedef typename cusp::array1d_view<thrust::device_ptr<double> > DeviceValueArrayView;
-
-//combine the three array1d_views into a coo_matrix_view
-typedef cusp::coo_matrix_view<DeviceIndexArrayView, DeviceIndexArrayView, DeviceValueArrayView> DeviceView;
-
 #define BLOCKDIMELEMENT 512
 #define BLOCKDIMCONSTRAINT 512
 #define BLOCKDIMCOLLISION 512

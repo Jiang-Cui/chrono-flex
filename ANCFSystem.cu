@@ -5,34 +5,36 @@
 
 #include <cusp/io/matrix_market.h>
 
-// linear operator y = A*x
-class stencil: public cusp::linear_operator<double, cusp::device_memory> {
-public:
-	typedef cusp::linear_operator<double, cusp::device_memory> super;
 
-	int N;
-	DeviceView massMatrix;
-	DeviceView stiffnessMatrix;
-	DeviceValueArrayView temp;
 
-// constructor
-	stencil(int N, DeviceView mass, DeviceView stiffness,
-			DeviceValueArrayView tempVector) :
-			super(N, N), N(N) {
-		massMatrix = mass;
-		stiffnessMatrix = stiffness;
-		temp = tempVector;
-	}
-
-// linear operator y = A*x
-	template<typename VectorType1, typename VectorType2>
-	void operator()(const VectorType1& x, VectorType2& y) const {
-// obtain a raw pointer to device memory
-		cusp::multiply(massMatrix, x, temp);
-		cusp::multiply(stiffnessMatrix, x, y);
-		cusp::blas::axpy(temp, y, 1);
-	}
-};
+//// linear operator y = A*x (for CUSP)
+//class stencil: public cusp::linear_operator<double, cusp::device_memory> {
+//public:
+//	typedef cusp::linear_operator<double, cusp::device_memory> super;
+//
+//	int N;
+//	DeviceView massMatrix;
+//	DeviceView stiffnessMatrix;
+//	DeviceValueArrayView temp;
+//
+//// constructor
+//	stencil(int N, DeviceView mass, DeviceView stiffness,
+//			DeviceValueArrayView tempVector) :
+//			super(N, N), N(N) {
+//		massMatrix = mass;
+//		stiffnessMatrix = stiffness;
+//		temp = tempVector;
+//	}
+//
+//// linear operator y = A*x
+//	template<typename VectorType1, typename VectorType2>
+//	void operator()(const VectorType1& x, VectorType2& y) const {
+//// obtain a raw pointer to device memory
+//		cusp::multiply(massMatrix, x, temp);
+//		cusp::multiply(stiffnessMatrix, x, y);
+//		cusp::blas::axpy(temp, y, 1);
+//	}
+//};
 
 ANCFSystem::ANCFSystem() {
 
@@ -43,6 +45,7 @@ ANCFSystem::ANCFSystem() {
 	mySolver = new SpikeSolver(partitions,opts);
 	mySpmv = new SpmvFunctor(lhs);
 	useSpike = false;
+	//m_spmv = new MySpmv(lhs,stiffness,lhsVec);
 	// end spike stuff
 
 	this->timeIndex = 0;
@@ -139,200 +142,200 @@ int ANCFSystem::setPartitions(int partitions)
 
 vector<float3> addMassMatrix(double rho, double A, double l)
 {
-		vector<float3> massNew;
-		float3 massEntry;
-		massEntry.x = 0;
-		massEntry.y = 0;
-		massEntry.z = 0.13e2 / 0.35e2 * rho * A * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 0;
-		massEntry.y = 3;
-		massEntry.z = 0.11e2 / 0.210e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 0;
-		massEntry.y = 6;
-		massEntry.z = 0.9e1 / 0.70e2 * rho * A * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 0;
-		massEntry.y = 9;
-		massEntry.z = -0.13e2 / 0.420e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 1;
-		massEntry.y = 1;
-		massEntry.z = 0.13e2 / 0.35e2 * rho * A * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 1;
-		massEntry.y = 4;
-		massEntry.z = 0.11e2 / 0.210e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 1;
-		massEntry.y = 7;
-		massEntry.z = 0.9e1 / 0.70e2 * rho * A * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 1;
-		massEntry.y = 10;
-		massEntry.z = -0.13e2 / 0.420e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 2;
-		massEntry.y = 2;
-		massEntry.z = 0.13e2 / 0.35e2 * rho * A * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 2;
-		massEntry.y = 5;
-		massEntry.z = 0.11e2 / 0.210e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 2;
-		massEntry.y = 8;
-		massEntry.z = 0.9e1 / 0.70e2 * rho * A * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 2;
-		massEntry.y = 11;
-		massEntry.z = -0.13e2 / 0.420e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 3;
-		massEntry.y = 0;
-		massEntry.z = 0.11e2 / 0.210e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 3;
-		massEntry.y = 3;
-		massEntry.z = rho * A * l * l * l / 0.105e3;
-		massNew.push_back(massEntry);
-		massEntry.x = 3;
-		massEntry.y = 6;
-		massEntry.z = 0.13e2 / 0.420e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 3;
-		massEntry.y = 9;
-		massEntry.z = -rho * A * l * l * l / 0.140e3;
-		massNew.push_back(massEntry);
-		massEntry.x = 4;
-		massEntry.y = 1;
-		massEntry.z = 0.11e2 / 0.210e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 4;
-		massEntry.y = 4;
-		massEntry.z = rho * A * l * l * l / 0.105e3;
-		massNew.push_back(massEntry);
-		massEntry.x = 4;
-		massEntry.y = 7;
-		massEntry.z = 0.13e2 / 0.420e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 4;
-		massEntry.y = 10;
-		massEntry.z = -rho * A * l * l * l / 0.140e3;
-		massNew.push_back(massEntry);
-		massEntry.x = 5;
-		massEntry.y = 2;
-		massEntry.z = 0.11e2 / 0.210e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 5;
-		massEntry.y = 5;
-		massEntry.z = rho * A * l * l * l / 0.105e3;
-		massNew.push_back(massEntry);
-		massEntry.x = 5;
-		massEntry.y = 8;
-		massEntry.z = 0.13e2 / 0.420e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 5;
-		massEntry.y = 11;
-		massEntry.z = -rho * A * l * l * l / 0.140e3;
-		massNew.push_back(massEntry);
-		massEntry.x = 6;
-		massEntry.y = 0;
-		massEntry.z = 0.9e1 / 0.70e2 * rho * A * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 6;
-		massEntry.y = 3;
-		massEntry.z = 0.13e2 / 0.420e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 6;
-		massEntry.y = 6;
-		massEntry.z = 0.13e2 / 0.35e2 * rho * A * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 6;
-		massEntry.y = 9;
-		massEntry.z = -0.11e2 / 0.210e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 7;
-		massEntry.y = 1;
-		massEntry.z = 0.9e1 / 0.70e2 * rho * A * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 7;
-		massEntry.y = 4;
-		massEntry.z = 0.13e2 / 0.420e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 7;
-		massEntry.y = 7;
-		massEntry.z = 0.13e2 / 0.35e2 * rho * A * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 7;
-		massEntry.y = 10;
-		massEntry.z = -0.11e2 / 0.210e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 8;
-		massEntry.y = 2;
-		massEntry.z = 0.9e1 / 0.70e2 * rho * A * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 8;
-		massEntry.y = 5;
-		massEntry.z = 0.13e2 / 0.420e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 8;
-		massEntry.y = 8;
-		massEntry.z = 0.13e2 / 0.35e2 * rho * A * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 8;
-		massEntry.y = 11;
-		massEntry.z = -0.11e2 / 0.210e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 9;
-		massEntry.y = 0;
-		massEntry.z = -0.13e2 / 0.420e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 9;
-		massEntry.y = 3;
-		massEntry.z = -rho * A * l * l * l / 0.140e3;
-		massNew.push_back(massEntry);
-		massEntry.x = 9;
-		massEntry.y = 6;
-		massEntry.z = -0.11e2 / 0.210e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 9;
-		massEntry.y = 9;
-		massEntry.z = rho * A * l * l * l / 0.105e3;
-		massNew.push_back(massEntry);
-		massEntry.x = 10;
-		massEntry.y = 1;
-		massEntry.z = -0.13e2 / 0.420e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 10;
-		massEntry.y = 4;
-		massEntry.z = -rho * A * l * l * l / 0.140e3;
-		massNew.push_back(massEntry);
-		massEntry.x = 10;
-		massEntry.y = 7;
-		massEntry.z = -0.11e2 / 0.210e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 10;
-		massEntry.y = 10;
-		massEntry.z = rho * A * l * l * l / 0.105e3;
-		massNew.push_back(massEntry);
-		massEntry.x = 11;
-		massEntry.y = 2;
-		massEntry.z = -0.13e2 / 0.420e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 11;
-		massEntry.y = 5;
-		massEntry.z = -rho * A * l * l * l / 0.140e3;
-		massNew.push_back(massEntry);
-		massEntry.x = 11;
-		massEntry.y = 8;
-		massEntry.z = -0.11e2 / 0.210e3 * rho * A * l * l;
-		massNew.push_back(massEntry);
-		massEntry.x = 11;
-		massEntry.y = 11;
-		massEntry.z = rho * A * l * l * l / 0.105e3;
-		massNew.push_back(massEntry);
+	vector < float3 > massNew;
+	float3 massEntry;
+	massEntry.x = 0;
+	massEntry.y = 0;
+	massEntry.z = 0.13e2 / 0.35e2 * rho * A * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 0;
+	massEntry.y = 3;
+	massEntry.z = 0.11e2 / 0.210e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 0;
+	massEntry.y = 6;
+	massEntry.z = 0.9e1 / 0.70e2 * rho * A * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 0;
+	massEntry.y = 9;
+	massEntry.z = -0.13e2 / 0.420e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 1;
+	massEntry.y = 1;
+	massEntry.z = 0.13e2 / 0.35e2 * rho * A * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 1;
+	massEntry.y = 4;
+	massEntry.z = 0.11e2 / 0.210e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 1;
+	massEntry.y = 7;
+	massEntry.z = 0.9e1 / 0.70e2 * rho * A * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 1;
+	massEntry.y = 10;
+	massEntry.z = -0.13e2 / 0.420e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 2;
+	massEntry.y = 2;
+	massEntry.z = 0.13e2 / 0.35e2 * rho * A * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 2;
+	massEntry.y = 5;
+	massEntry.z = 0.11e2 / 0.210e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 2;
+	massEntry.y = 8;
+	massEntry.z = 0.9e1 / 0.70e2 * rho * A * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 2;
+	massEntry.y = 11;
+	massEntry.z = -0.13e2 / 0.420e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 3;
+	massEntry.y = 0;
+	massEntry.z = 0.11e2 / 0.210e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 3;
+	massEntry.y = 3;
+	massEntry.z = rho * A * l * l * l / 0.105e3;
+	massNew.push_back(massEntry);
+	massEntry.x = 3;
+	massEntry.y = 6;
+	massEntry.z = 0.13e2 / 0.420e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 3;
+	massEntry.y = 9;
+	massEntry.z = -rho * A * l * l * l / 0.140e3;
+	massNew.push_back(massEntry);
+	massEntry.x = 4;
+	massEntry.y = 1;
+	massEntry.z = 0.11e2 / 0.210e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 4;
+	massEntry.y = 4;
+	massEntry.z = rho * A * l * l * l / 0.105e3;
+	massNew.push_back(massEntry);
+	massEntry.x = 4;
+	massEntry.y = 7;
+	massEntry.z = 0.13e2 / 0.420e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 4;
+	massEntry.y = 10;
+	massEntry.z = -rho * A * l * l * l / 0.140e3;
+	massNew.push_back(massEntry);
+	massEntry.x = 5;
+	massEntry.y = 2;
+	massEntry.z = 0.11e2 / 0.210e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 5;
+	massEntry.y = 5;
+	massEntry.z = rho * A * l * l * l / 0.105e3;
+	massNew.push_back(massEntry);
+	massEntry.x = 5;
+	massEntry.y = 8;
+	massEntry.z = 0.13e2 / 0.420e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 5;
+	massEntry.y = 11;
+	massEntry.z = -rho * A * l * l * l / 0.140e3;
+	massNew.push_back(massEntry);
+	massEntry.x = 6;
+	massEntry.y = 0;
+	massEntry.z = 0.9e1 / 0.70e2 * rho * A * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 6;
+	massEntry.y = 3;
+	massEntry.z = 0.13e2 / 0.420e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 6;
+	massEntry.y = 6;
+	massEntry.z = 0.13e2 / 0.35e2 * rho * A * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 6;
+	massEntry.y = 9;
+	massEntry.z = -0.11e2 / 0.210e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 7;
+	massEntry.y = 1;
+	massEntry.z = 0.9e1 / 0.70e2 * rho * A * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 7;
+	massEntry.y = 4;
+	massEntry.z = 0.13e2 / 0.420e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 7;
+	massEntry.y = 7;
+	massEntry.z = 0.13e2 / 0.35e2 * rho * A * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 7;
+	massEntry.y = 10;
+	massEntry.z = -0.11e2 / 0.210e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 8;
+	massEntry.y = 2;
+	massEntry.z = 0.9e1 / 0.70e2 * rho * A * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 8;
+	massEntry.y = 5;
+	massEntry.z = 0.13e2 / 0.420e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 8;
+	massEntry.y = 8;
+	massEntry.z = 0.13e2 / 0.35e2 * rho * A * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 8;
+	massEntry.y = 11;
+	massEntry.z = -0.11e2 / 0.210e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 9;
+	massEntry.y = 0;
+	massEntry.z = -0.13e2 / 0.420e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 9;
+	massEntry.y = 3;
+	massEntry.z = -rho * A * l * l * l / 0.140e3;
+	massNew.push_back(massEntry);
+	massEntry.x = 9;
+	massEntry.y = 6;
+	massEntry.z = -0.11e2 / 0.210e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 9;
+	massEntry.y = 9;
+	massEntry.z = rho * A * l * l * l / 0.105e3;
+	massNew.push_back(massEntry);
+	massEntry.x = 10;
+	massEntry.y = 1;
+	massEntry.z = -0.13e2 / 0.420e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 10;
+	massEntry.y = 4;
+	massEntry.z = -rho * A * l * l * l / 0.140e3;
+	massNew.push_back(massEntry);
+	massEntry.x = 10;
+	massEntry.y = 7;
+	massEntry.z = -0.11e2 / 0.210e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 10;
+	massEntry.y = 10;
+	massEntry.z = rho * A * l * l * l / 0.105e3;
+	massNew.push_back(massEntry);
+	massEntry.x = 11;
+	massEntry.y = 2;
+	massEntry.z = -0.13e2 / 0.420e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 11;
+	massEntry.y = 5;
+	massEntry.z = -rho * A * l * l * l / 0.140e3;
+	massNew.push_back(massEntry);
+	massEntry.x = 11;
+	massEntry.y = 8;
+	massEntry.z = -0.11e2 / 0.210e3 * rho * A * l * l;
+	massNew.push_back(massEntry);
+	massEntry.x = 11;
+	massEntry.y = 11;
+	massEntry.z = rho * A * l * l * l / 0.105e3;
+	massNew.push_back(massEntry);
 
 	return massNew;
 }
@@ -453,9 +456,9 @@ int ANCFSystem::addElement(Element* element)
 
 	for(int i=0;i<mass.size();i++)
 	{
-		lhsI_h.push_back(mass[i].x+12*(elements.size()-1));
-		lhsJ_h.push_back(mass[i].y+12*(elements.size()-1));
-		lhs_h.push_back(static_cast<double>(mass[i].z));
+//		lhsI_h.push_back(mass[i].x+12*(elements.size()-1));
+//		lhsJ_h.push_back(mass[i].y+12*(elements.size()-1));
+//		lhs_h.push_back(static_cast<double>(mass[i].z));
 
 		massI_h.push_back(mass[i].x+12*(elements.size()-1));
 		massJ_h.push_back(mass[i].y+12*(elements.size()-1));
@@ -466,9 +469,13 @@ int ANCFSystem::addElement(Element* element)
 	{
 		for(int j=0;j<12;j++)
 		{
-			stiffnessI_h.push_back(i+12*(elements.size()-1));
-			stiffnessJ_h.push_back(j+12*(elements.size()-1));
-			stiffness_h.push_back(0.0);
+//			stiffnessI_h.push_back(i+12*(elements.size()-1));
+//			stiffnessJ_h.push_back(j+12*(elements.size()-1));
+//			stiffness_h.push_back(0.0);
+
+			lhsI_h.push_back(i+12*(elements.size()-1));
+			lhsJ_h.push_back(j+12*(elements.size()-1));
+			lhs_h.push_back(0.0);
 		}
 	}
 
@@ -503,6 +510,7 @@ int ANCFSystem::addForce(Element* element, double xi, float3 force)
 int ANCFSystem::clearAppliedForces()
 {
 	thrust::fill(fapp_d.begin(),fapp_d.end(),0.0); //Clear internal forces
+	return 0;
 }
 
 int ANCFSystem::updatePhiq()
@@ -741,7 +749,7 @@ int ANCFSystem::initializeDevice()
 	DeviceValueArrayView values = DeviceValueArrayView(wrapped_device_V, wrapped_device_V + lhs_d.size());
 
 	lhs = DeviceView(anew_d.size(), anew_d.size(), lhs_d.size(), row_indices, column_indices, values);
-	lhs.sort_by_row();
+	//lhs.sort_by_row();
 
 	dimBlockConstraint.x = BLOCKDIMCONSTRAINT;
 	dimGridConstraint.x = static_cast<int>(ceil((static_cast<double>(constraints.size()))/(static_cast<double>(BLOCKDIMCONSTRAINT))));
@@ -777,19 +785,19 @@ int ANCFSystem::createMass()
 	mass = DeviceView(p_h.size(), p_h.size(), mass_d.size(), row_indices, column_indices, values);
 	mass.sort_by_row();
 
-	stiffnessI_d = stiffnessI_h;
-	stiffnessJ_d = stiffnessJ_h;
-	stiffness_d = stiffness_h;
-
-	thrust::device_ptr<int> wrapped_device_I_S(CASTI1(stiffnessI_d));
-	DeviceIndexArrayView row_indices_S = DeviceIndexArrayView(wrapped_device_I_S, wrapped_device_I_S + stiffnessI_d.size());
-
-	thrust::device_ptr<int> wrapped_device_J_S(CASTI1(stiffnessJ_d));
-	DeviceIndexArrayView column_indices_S = DeviceIndexArrayView(wrapped_device_J_S, wrapped_device_J_S + stiffnessJ_d.size());
-
-	thrust::device_ptr<double> wrapped_device_V_S(CASTD1(stiffness_d));
-	DeviceValueArrayView values_S = DeviceValueArrayView(wrapped_device_V_S, wrapped_device_V_S + stiffness_d.size());
-	stiffness = DeviceView(12*elements.size()+constraints.size(),12*elements.size()+constraints.size(), stiffness_d.size(), row_indices_S, column_indices_S, values_S);
+//	stiffnessI_d = stiffnessI_h;
+//	stiffnessJ_d = stiffnessJ_h;
+//	stiffness_d = stiffness_h;
+//
+//	thrust::device_ptr<int> wrapped_device_I_S(CASTI1(stiffnessI_d));
+//	DeviceIndexArrayView row_indices_S = DeviceIndexArrayView(wrapped_device_I_S, wrapped_device_I_S + stiffnessI_d.size());
+//
+//	thrust::device_ptr<int> wrapped_device_J_S(CASTI1(stiffnessJ_d));
+//	DeviceIndexArrayView column_indices_S = DeviceIndexArrayView(wrapped_device_J_S, wrapped_device_J_S + stiffnessJ_d.size());
+//
+//	thrust::device_ptr<double> wrapped_device_V_S(CASTD1(stiffness_d));
+//	DeviceValueArrayView values_S = DeviceValueArrayView(wrapped_device_V_S, wrapped_device_V_S + stiffness_d.size());
+//	stiffness = DeviceView(12*elements.size()+constraints.size(),12*elements.size()+constraints.size(), stiffness_d.size(), row_indices_S, column_indices_S, values_S);
 
 	return 0;
 }
@@ -876,146 +884,40 @@ int ANCFSystem::initializeSystem()
 	}
 
 	initializeDevice();
-	ANCFSystem::initializeBoundingBoxes_CPU();
+	//ANCFSystem::initializeBoundingBoxes_CPU();
 	//detector.updateBoundingBoxes(aabb_data_d);
-	detector.setBoundingBoxPointer(&aabb_data_d);
-	detector.detectPossibleCollisions();
+	//detector.setBoundingBoxPointer(&aabb_data_d);
+	//detector.detectPossibleCollisions();
 
 	ANCFSystem::updateInternalForces();
 
 	//cusp::blas::axpy(fint,eTop,-1);
 	cusp::blas::axpby(fext,fint,eTop,1,-1);
 
-	// set stopping criteria:
-	//  iteration_limit    = 100
-	//  relative_tolerance = 1e-5
-	cusp::default_monitor<double> monitor(eAll,1000,1e-7);
-
-	// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
-	cusp::krylov::cg(lhs, delta, eAll, monitor);
+//	// set stopping criteria:
+//	//  iteration_limit    = 100
+//	//  relative_tolerance = 1e-5
+//	cusp::default_monitor<double> monitor(eAll,1000,1e-7);
+//
+//	// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
+//	cusp::krylov::cg(lhs, delta, eAll, monitor);
 
 	// spike stuff
 	mySolver->setup(lhs);
 	// end spike stuff
 
-	//ANCFSystem::saveLHS();
-	//cusp::print(lhs);
-	//cin.get();
-	//int it_NK = ANCFSystem::solve_bicgstab();
-	//cin.get();
-	//cusp::multiply(lhsCSR,eAll,anewAll);
-	//ANCFSystem::solve_cg();
+	cusp::blas::fill(delta,0);
+	bool success = mySolver->solve(*mySpmv,eAll,delta);
+	spike::Stats stats = mySolver->getStats();
 
 	cusp::copy(delta,anewAll);
 	cusp::copy(anew,a);
 	cusp::copy(v,vnew);
 	cusp::copy(p,pnew);
 
-	ANCFSystem::updateParticleDynamics();
+	//ANCFSystem::updateParticleDynamics();
 
 	return 0;
-}
-
-int ANCFSystem::getLeftHandSide(DeviceValueArrayView x)
-{
-
-	//cusp::print(lhs);
-	//cin.get();
-	cusp::multiply(lhs,x,lhsVec);
-	//cusp::multiply(stiffness,x,lhsVecStiffness);
-	//cusp::blas::axpy(lhsVecStiffness,lhsVec,1);
-
-	return 0;
-}
-
-int ANCFSystem::solve_cg()
-{
-	thrust::fill(delta_d.begin(),delta_d.end(),0.0);
-	ANCFSystem::getLeftHandSide(delta);
-	cusp::blas::axpby(eAll,lhsVec,rcg,1,-1);
-	cusp::copy(rcg,pcg);
-	double rsold = cusp::blas::dot(rcg,rcg);
-	double alpha = 0;
-	double rsnew = 0;
-	int iter = 0;
-	for(int i=1;i<=12*elements.size()+constraints.size();i++)
-	//while(1)
-	{
-		iter ++;
-
-		ANCFSystem::getLeftHandSide(pcg);
-		alpha = cusp::blas::dot(pcg,lhsVec);
-		alpha = rsold/alpha;
-		cusp::blas::axpy(pcg,delta,alpha);
-		cusp::blas::axpy(lhsVec,rcg,-1*alpha);
-		rsnew = cusp::blas::dot(rcg,rcg);
-		if(sqrt(rsnew)<tol)
-		{
-			//printf("\n");
-			return iter;
-		}
-		cusp::blas::axpby(rcg,pcg,pcg,1,rsnew/rsold);
-
-		rsold = rsnew;
-		//printf("%d %.13f\n",iter,sqrt(rsnew));
-	}
-	//printf("\n");
-	return 12*elements.size()+constraints.size();
-}
-
-int ANCFSystem::solve_bicgstab()
-{
-	thrust::fill(delta_d.begin(),delta_d.end(),0.0);
-	ANCFSystem::getLeftHandSide(delta);
-	cusp::blas::axpby(eAll,lhsVec,rcg,1,-1);
-	cusp::copy(rcg,rhatcg);
-	double rho_old = 1;
-	thrust::fill(pcg_d.begin(),pcg_d.end(),0.0);
-	cusp::copy(pcg,phatcg);
-
-	double rho;
-	double beta;
-	double alpha;
-	double temp;
-
-	int iter = 0;
-	double norm;
-
-	while(1)
-	{
-		iter ++;
-
-		rho = cusp::blas::dot(rhatcg,rcg);
-		beta = rho/rho_old;
-		cusp::blas::axpby(rcg,pcg,pcg,1,beta);
-		cusp::blas::axpby(rhatcg,phatcg,phatcg,1,beta);
-		ANCFSystem::getLeftHandSide(pcg);
-		temp = cusp::blas::dot(phatcg,lhsVec);
-		alpha = rho/temp;
-		cusp::blas::axpy(pcg,delta,alpha);
-
-		ANCFSystem::getLeftHandSide(delta);
-		cusp::blas::axpby(eAll,lhsVec,residual,1,-1);
-		norm = cusp::blas::nrmmax(residual);
-
-		//norm = cusp::blas::nrm2(pcg);
-		if(norm<tol)
-		{
-			//printf("\n");
-			return iter;
-		}
-
-		ANCFSystem::getLeftHandSide(pcg);
-		cusp::blas::axpy(lhsVec,rcg,-1*alpha);
-		ANCFSystem::getLeftHandSide(phatcg);
-		cusp::blas::axpy(lhsVec,rhatcg,-1*alpha);
-
-		// update!
-		rho_old = rho;
-		//printf("%d %.13f\n",iter,norm);
-	}
-	//printf("\n");
-	return iter;
 }
 
 int ANCFSystem::DoTimeStep()
@@ -1029,7 +931,7 @@ int ANCFSystem::DoTimeStep()
 	double norm_d=1;
 	int it = 0;
 
-	ANCFSystem::updateParticleDynamics();
+	//ANCFSystem::updateParticleDynamics();
 
 	// update q and q_dot for initial guess
 	cusp::blas::axpbypcz(p,v,a,pnew,1,h,.5*h*h);
@@ -1055,7 +957,7 @@ int ANCFSystem::DoTimeStep()
 			if(fullJacobian)
 			{
 				// use full left-hand side matrix
-				stencil lhsStencil(anewAll.size(), lhs, stiffness, lhsVec);
+				//stencil lhsStencil(anewAll.size(), lhs, stiffness, lhsVec);
 
 				// set stopping criteria:
 				//  iteration_limit    = 100
@@ -1063,7 +965,7 @@ int ANCFSystem::DoTimeStep()
 				cusp::default_monitor<double> monitor(eAll, 1000, tol);
 
 				// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
-				cusp::krylov::cg(lhsStencil, delta, eAll, monitor);
+				cusp::krylov::cg(lhs, delta, eAll, monitor);
 
 				cout << "Success: " << monitor.converged() << " Iterations: " << monitor.iteration_count() << " relResidualNorm: " << monitor.relative_tolerance() << endl;
 			}
@@ -1089,8 +991,9 @@ int ANCFSystem::DoTimeStep()
 			//SOLVE USING SPIKE
 			cusp::blas::fill(delta,0);
 			bool success = mySolver->solve(*mySpmv,eAll,delta);
+			//bool success = mySolver->solve(*m_spmv,eAll,delta);
 			spike::Stats stats = mySolver->getStats();
-			cout << "Success: " << success << " Iterations: " << stats.numIterations << " relResidualNorm: " << stats.relResidualNorm << endl;
+			//cout << "Success: " << success << " Iterations: " << stats.numIterations << " relResidualNorm: " << stats.relResidualNorm << endl;
 
 
 	//		cusp::io::write_matrix_market_file(lhs, "lhs.txt");
@@ -1116,7 +1019,7 @@ int ANCFSystem::DoTimeStep()
 		// get norms
 		norm_e = cusp::blas::nrm2(eAll)/pow((double)elements.size(),2);
 		norm_d = cusp::blas::nrm2(delta)/pow((double)elements.size(),2);
-		cout << norm_e << " " << norm_d << endl;
+		//cout << norm_e << " " << norm_d << endl;
 	}
 
 	cusp::copy(anew,a);
