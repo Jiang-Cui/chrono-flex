@@ -100,6 +100,8 @@ public:
 	DeviceValueArrayView delta;
 
 	DeviceView lhs;
+	DeviceView lhs_mass;
+	DeviceView lhs_phiq;
 	DeviceView phiq;
 	DeviceView mass;
 

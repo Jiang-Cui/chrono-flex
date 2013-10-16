@@ -470,7 +470,7 @@ int ANCFSystem::clearAppliedForces()
 	return 0;
 }
 
-int ANCFSystem::updatePhiq()
+int ANCFSystem::updatePhiq() // used in Newton iteration, nice to keep it separate (but not memory efficient) - only needs to be done once (linear constraints)
 {
 	for(int i=0;i<constraints.size();i++)
 	{
@@ -659,7 +659,7 @@ int ANCFSystem::initializeDevice()
 	phiqlam = DeviceValueArrayView(wrapped_device_phiqlam, wrapped_device_phiqlam + phiqlam_d.size());
 	delta = DeviceValueArrayView(wrapped_device_delta, wrapped_device_delta + delta_d.size());
 
-	// create mass matrix using cusp library (shouldn't change)
+	// create lhs matrix using cusp library (shouldn't change)
 	thrust::device_ptr<int> wrapped_device_I(CASTI1(lhsI_d));
 	DeviceIndexArrayView row_indices = DeviceIndexArrayView(wrapped_device_I, wrapped_device_I + lhsI_d.size());
 
@@ -670,7 +670,22 @@ int ANCFSystem::initializeDevice()
 	DeviceValueArrayView values = DeviceValueArrayView(wrapped_device_V, wrapped_device_V + lhs_d.size());
 
 	lhs = DeviceView( anew_d.size(), anew_d.size(), lhs_d.size(), row_indices, column_indices, values);
-	//lhs.sort_by_row();
+	// end create lhs matrix
+
+	// create the view to the mass block of the lhs matrix
+	DeviceIndexArrayView row_indices_mass = DeviceIndexArrayView(wrapped_device_I, wrapped_device_I + 12*12*elements.size());
+	DeviceIndexArrayView column_indices_mass = DeviceIndexArrayView(wrapped_device_J, wrapped_device_J + 12*12*elements.size());
+	DeviceValueArrayView values_mass = DeviceValueArrayView(wrapped_device_V, wrapped_device_V + 12*12*elements.size());
+	lhs_mass = DeviceView( anew_d.size(), anew_d.size(), 12*12*elements.size(), row_indices_mass, column_indices_mass, values_mass);
+	// end create the view to the mass block of the lhs matrix
+
+	// create the view to the mass block of the lhs matrix
+	DeviceIndexArrayView row_indices_phiq = DeviceIndexArrayView(wrapped_device_I + 12*12*elements.size(), wrapped_device_I + lhsI_d.size());
+	DeviceIndexArrayView column_indices_phiq = DeviceIndexArrayView(wrapped_device_J + 12*12*elements.size(), wrapped_device_J + lhsJ_d.size());
+	DeviceValueArrayView values_phiq = DeviceValueArrayView(wrapped_device_V + 12*12*elements.size(), wrapped_device_V + lhs_d.size());
+	lhs_phiq = DeviceView( anew_d.size(), anew_d.size(), lhs_d.size()-12*12*elements.size(), row_indices_phiq, column_indices_phiq, values_phiq);
+	lhs_phiq.sort_by_row(); // MUST BE SORTED FOR SPMV TO WORK CORRECTLY
+	// end create the view to the mass block of the lhs matrix
 
 	dimBlockConstraint.x = BLOCKDIMCONSTRAINT;
 	dimGridConstraint.x = static_cast<int>(ceil((static_cast<double>(constraints.size()))/(static_cast<double>(BLOCKDIMCONSTRAINT))));
@@ -687,7 +702,7 @@ int ANCFSystem::initializeDevice()
 	return 0;
 }
 
-int ANCFSystem::createMass()
+int ANCFSystem::createMass() // used in Newton iteration, nice to keep it separate (but not memory efficient)
 {
 	massI_d = massI_h;
 	massJ_d = massJ_h;
@@ -857,6 +872,11 @@ int ANCFSystem::DoTimeStep()
 		cusp::blas::axpy(phiqlam,eTop,1);
 		cusp::blas::copy(phi,eBottom);
 
+//		cusp::print(lhs);
+//		cusp::print(lhs_mass);
+//		cusp::print(lhs_phiq);
+//		cin.get();
+
 		// SOLVE THE LINEAR SYSTEM
 		if(!useSpike)
 		{
@@ -905,7 +925,7 @@ int ANCFSystem::DoTimeStep()
 
 
 			cusp::io::write_matrix_market_file(lhs, "lhs.txt");
-			cin.get();
+			//cin.get();
 
 	//		(*mySpmv)(delta,eAll);
 	//		cusp::print(eAll);
@@ -913,6 +933,14 @@ int ANCFSystem::DoTimeStep()
 			//END SOLVE USING SPIKE
 		}
 		// END SOLVE THE LINEAR SYSTEM
+
+//		if(timeIndex%100==0)
+//		{
+//			char filename[100];
+//			sprintf(filename, "./intForce%d.dat", timeIndex/100);
+//			cusp::io::write_matrix_market_file(fint, filename);
+//		}
+
 
 		// update anew
 		cusp::blas::axpy(delta,anewAll,-1);
