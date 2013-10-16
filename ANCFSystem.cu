@@ -5,15 +5,49 @@
 
 #include <cusp/io/matrix_market.h>
 
+// linear operator y = A*x (for CUSP)
+class stencil: public cusp::linear_operator<double, cusp::device_memory> {
+public:
+	typedef cusp::linear_operator<double, cusp::device_memory> super;
+
+	int N;
+	DeviceView massMatrix;
+	DeviceView phiqMatrix;
+	DeviceValueArrayView temp;
+
+// constructor
+	stencil(int N, DeviceView lhs_mass, DeviceView lhs_phiq,
+			DeviceValueArrayView tempVector) :
+			super(N, N), N(N) {
+		massMatrix = lhs_mass;
+		phiqMatrix = lhs_phiq;
+		temp = tempVector;
+	}
+
+// linear operator y = A*x
+	template<typename VectorType1, typename VectorType2>
+	void operator()(const VectorType1& x, VectorType2& y) const {
+// obtain a raw pointer to device memory
+		cusp::multiply(massMatrix, x, temp);
+		cusp::multiply(phiqMatrix, x, y);
+		cusp::blas::axpy(temp, y, 1);
+	}
+};
+
 ANCFSystem::ANCFSystem() {
+
+	tol = 1e-7;
 
 	// spike stuff
 	partitions = 1;
 	spike::Options  opts;
 	opts.safeFactorization = true;
+	opts.trackReordering = true;
+	opts.tolerance = 1e-2*tol;
 	mySolver = new SpikeSolver(partitions,opts);
-	mySpmv = new SpmvFunctor(lhs);
+	//mySpmv = new SpmvFunctor(lhs);
 	useSpike = false;
+	m_spmv = new MySpmv(lhs_mass,lhs_phiq,lhsVec);
 	// end spike stuff
 
 	this->timeIndex = 0;
@@ -22,7 +56,6 @@ ANCFSystem::ANCFSystem() {
 	alphaHHT = -.1;
 	betaHHT = (1 - alphaHHT) * (1 - alphaHHT) * .25;
 	gammaHHT = 0.5 - alphaHHT;
-	tol = 1e-7;
 	timeToSimulate = 0;
 	simTime = 0;
 	fullJacobian = 1;
@@ -105,6 +138,7 @@ int ANCFSystem::setPartitions(int partitions)
 {
 	spike::Options  opts;
 	opts.safeFactorization = true;
+	opts.trackReordering = true;
 	mySolver = new SpikeSolver(partitions,opts);
 }
 
@@ -614,6 +648,7 @@ int ANCFSystem::initializeDevice()
 	phiqlam_d = phiqlam_h;
 	delta_d = delta_h;
 	constraintPairs_d = constraintPairs_h;
+	lhsVec_d = anew_h;
 
 	lhsI_d = lhsI_h;
 	lhsJ_d = lhsJ_h;
@@ -638,6 +673,7 @@ int ANCFSystem::initializeDevice()
 	thrust::device_ptr<double> wrapped_device_phi0(CASTD1(phi0_d));
 	thrust::device_ptr<double> wrapped_device_phiqlam(CASTD1(phiqlam_d));
 	thrust::device_ptr<double> wrapped_device_delta(CASTD1(delta_d));
+	thrust::device_ptr<double> wrapped_device_lhsVec(CASTD1(lhsVec_d));
 
 	eAll = DeviceValueArrayView(wrapped_device_e, wrapped_device_e + e_d.size());
 	eTop = DeviceValueArrayView(wrapped_device_e, wrapped_device_e + 12*elements.size());
@@ -658,6 +694,7 @@ int ANCFSystem::initializeDevice()
 	phi0 = DeviceValueArrayView(wrapped_device_phi0, wrapped_device_phi0 + phi0_d.size());
 	phiqlam = DeviceValueArrayView(wrapped_device_phiqlam, wrapped_device_phiqlam + phiqlam_d.size());
 	delta = DeviceValueArrayView(wrapped_device_delta, wrapped_device_delta + delta_d.size());
+	lhsVec = DeviceValueArrayView(wrapped_device_lhsVec, wrapped_device_lhsVec + lhsVec_d.size());
 
 	// create lhs matrix using cusp library (shouldn't change)
 	thrust::device_ptr<int> wrapped_device_I(CASTI1(lhsI_d));
@@ -823,14 +860,14 @@ int ANCFSystem::initializeSystem()
 	//cin.get();
 
 	//lhs.sort_by_row();
-	cusp::blas::fill(delta,0);
-	bool success = mySolver->solve(*mySpmv,eAll,delta);
+	//cusp::blas::fill(delta,0);
+	bool success = mySolver->solve(*m_spmv,eAll,anewAll);
 	spike::Stats stats = mySolver->getStats();
 
 	//cusp::print(delta);
 	//cin.get();
 
-	cusp::copy(delta,anewAll);
+	//cusp::copy(delta,anewAll);
 	cusp::copy(anew,a);
 	cusp::copy(v,vnew);
 	cusp::copy(p,pnew);
@@ -858,11 +895,13 @@ int ANCFSystem::DoTimeStep()
 	cusp::blas::axpbypcz(p,v,a,pnew,1,h,.5*h*h);
 	cusp::blas::axpby(v,a,vnew,1,h);
 
+	if(useSpike) mySolver->update(lhs.values);
+
 	while(norm_d>tol)//while(norm_e>tol&&norm_d>tol)
 	{
 		it++;
 
-		ANCFSystem::updateInternalForces(0);
+		ANCFSystem::updateInternalForces(1);
 		ANCFSystem::updatePhi();
 
 		cusp::multiply(phiq,lambda,phiqlam);
@@ -872,65 +911,33 @@ int ANCFSystem::DoTimeStep()
 		cusp::blas::axpy(phiqlam,eTop,1);
 		cusp::blas::copy(phi,eBottom);
 
-//		cusp::print(lhs);
-//		cusp::print(lhs_mass);
-//		cusp::print(lhs_phiq);
-//		cin.get();
-
 		// SOLVE THE LINEAR SYSTEM
+		cusp::blas::fill(delta, 0);
 		if(!useSpike)
 		{
-			if(fullJacobian)
-			{
-				// use full left-hand side matrix
-				//stencil lhsStencil(anewAll.size(), lhs, stiffness, lhsVec);
+			// SOLVE USING CUSP
+			stencil lhsStencil(anewAll.size(), lhs_mass, lhs_phiq, lhsVec);
 
-				// set stopping criteria:
-				//  iteration_limit    = 100
-				//  relative_tolerance = 1e-5
-				cusp::default_monitor<double> monitor(eAll, 1000, tol);
+			cusp::default_monitor<double> monitor(eAll, 1000, 1e-2*tol);
 
-				// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
-//				cusp::print(lhs);
-//				cin.get();
-				cusp::krylov::cg(lhs, delta, eAll, monitor);
+			// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
+			cusp::krylov::cg(lhsStencil, delta, eAll, monitor);
 
-				cout << "Success: " << monitor.converged() << " Iterations: " << monitor.iteration_count() << " relResidualNorm: " << monitor.relative_tolerance() << endl;
-			}
-			else
-			{
-				// SOLVE USING CUSP CG
-				// set stopping criteria:
-				//  iteration_limit    = 100
-				//  relative_tolerance = 1e-5
-				cusp::default_monitor<double> monitor(eAll, 1000, tol);
-
-				// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
-				cusp::krylov::cg(lhs, delta, eAll, monitor);
-
-				cout << "Success: " << monitor.converged() << " Iterations: " << monitor.iteration_count() << " relResidualNorm: " << monitor.relative_tolerance() << " norm_d: ";
-				//cin.get();
-				// END SOLVE USING CUSP CG
-			}
+			cout << "Success: " << monitor.converged() << " Iterations: "
+					<< monitor.iteration_count() << " relResidualNorm: "
+					<< monitor.relative_tolerance() << " norm_d: ";
 		}
 
 		if(useSpike)
 		{
 			//SOLVE USING SPIKE
-			cusp::blas::fill(delta,0);
-			bool success = mySolver->solve(*mySpmv,eAll,delta);
-			//bool success = mySolver->solve(*m_spmv,eAll,delta);
+			bool success = mySolver->solve(*m_spmv,eAll,delta);
+
 			spike::Stats stats = mySolver->getStats();
-			cout << "Success: " << success << " Iterations: " << stats.numIterations << " relResidualNorm: " << stats.relResidualNorm << " norm_d: ";
 
-
-			cusp::io::write_matrix_market_file(lhs, "lhs.txt");
-			//cin.get();
-
-	//		(*mySpmv)(delta,eAll);
-	//		cusp::print(eAll);
-	//		cin.get();
-			//END SOLVE USING SPIKE
+			cout << "Success: " << success << " Iterations: "
+					<< stats.numIterations << " relResidualNorm: "
+					<< stats.relResidualNorm << " norm_d: ";
 		}
 		// END SOLVE THE LINEAR SYSTEM
 
@@ -940,7 +947,6 @@ int ANCFSystem::DoTimeStep()
 //			sprintf(filename, "./intForce%d.dat", timeIndex/100);
 //			cusp::io::write_matrix_market_file(fint, filename);
 //		}
-
 
 		// update anew
 		cusp::blas::axpy(delta,anewAll,-1);
@@ -972,9 +978,9 @@ int ANCFSystem::DoTimeStep()
 	timeToSimulate+=elapsedTime/1000.0;
 
 	p_h = p_d;
-	v_h = v_d;
-	pParticle_h = pParticle_d;
-	vParticle_h = vParticle_d;
+	//v_h = v_d;
+	//pParticle_h = pParticle_d;
+	//vParticle_h = vParticle_d;
 
 	//printf("Time: %f (it = %d, PTA pos = (%f, %.13f, %f)\n",this->getCurrentTime(),it,getXYZPosition(elements.size()-1,1).x,getXYZPosition(elements.size()-1,1).y,getXYZPosition(elements.size()-1,1).z);
 	printf("Time: %f (Simulation time = %f ms, it = %d)\n",this->getCurrentTime(), elapsedTime,it);

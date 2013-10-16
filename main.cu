@@ -279,29 +279,29 @@ int main(int argc, char** argv)
 	sys.initializeSystem();
 	printf("System Initialized (%d beams, %d constraints, %d equations)!\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
 
-////	// Uncomment if you don't want visualization
-//	while(sys.timeIndex<=30)
-//	{
-//		//if(sys.getTimeIndex()%100==0) sys.writeToFile();
-//		sys.DoTimeStep();
-//	}
-//	printf("Total time to simulate: %f [s]\n",sys.timeToSimulate);
+//	// Uncomment if you don't want visualization
+	while(sys.timeIndex<=30)
+	{
+		//if(sys.getTimeIndex()%100==0) sys.writeToFile();
+		sys.DoTimeStep();
+	}
+	printf("Total time to simulate: %f [s]\n",sys.timeToSimulate);
 
-	// Uncomment if you want visualization
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowPosition(0,0);
-	glutInitWindowSize(1024	,512);
-	glutCreateWindow("MAIN");
-	glutDisplayFunc(renderSceneAll);
-	glutIdleFunc(renderSceneAll);
-	glutReshapeFunc(changeSize);
-	glutIgnoreKeyRepeat(0);
-	glutKeyboardFunc(CallBackKeyboardFunc);
-	glutMouseFunc(CallBackMouseFunc);
-	glutMotionFunc(CallBackMotionFunc);
-	initScene();
-	glutMainLoop();
+//	// Uncomment if you want visualization
+//	glutInit(&argc, argv);
+//	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+//	glutInitWindowPosition(0,0);
+//	glutInitWindowSize(1024	,512);
+//	glutCreateWindow("MAIN");
+//	glutDisplayFunc(renderSceneAll);
+//	glutIdleFunc(renderSceneAll);
+//	glutReshapeFunc(changeSize);
+//	glutIgnoreKeyRepeat(0);
+//	glutKeyboardFunc(CallBackKeyboardFunc);
+//	glutMouseFunc(CallBackMouseFunc);
+//	glutMotionFunc(CallBackMotionFunc);
+//	initScene();
+//	glutMainLoop();
 
 	return 0;
 }

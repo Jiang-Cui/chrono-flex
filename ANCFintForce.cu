@@ -149,15 +149,15 @@ __global__ void addInternalForceComponent(double* fint, double* strainD_shared, 
 		fint[10] += factor * strain * strainD_shared[10];
 		fint[11] += factor * strain * strainD_shared[11];
 
-//		if(updateLhs)
-//		{
-//			factor = factor * betah2;
-//			for (int j = 0; j < 12; j++) {
-//				for (int k = 0; k < 12; k++) {
-//					stiffness[12 * j + k] += strainD_shared[j] * strainD_shared[k] * factor;
-//				}
-//			}
-//		}
+		if(updateLhs)
+		{
+			factor = factor * betah2;
+			for (int j = 0; j < 12; j++) {
+				for (int k = 0; k < 12; k++) {
+					stiffness[12 * j + k] += strainD_shared[j] * strainD_shared[k] * factor;
+				}
+			}
+		}
 
 	}
 }

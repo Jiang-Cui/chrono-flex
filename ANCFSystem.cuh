@@ -22,11 +22,28 @@ typedef typename cusp::array1d_view<thrust::device_ptr<int> > DeviceIndexArrayVi
 typedef typename cusp::array1d_view<thrust::device_ptr<double> > DeviceValueArrayView;
 
 //combine the three array1d_views into a coo_matrix_view
-typedef cusp::coo_matrix_view<DeviceIndexArrayView, DeviceIndexArrayView, DeviceValueArrayView> DeviceView;
+typedef typename cusp::coo_matrix_view<DeviceIndexArrayView, DeviceIndexArrayView, DeviceValueArrayView> DeviceView;
 
 typedef typename spike::Solver<DeviceView, DeviceValueArrayView> SpikeSolver;
-typedef typename spike::SpmvCusp<DeviceView, DeviceValueArrayView> SpmvFunctor;
+//typedef typename spike::SpmvCusp<DeviceView, DeviceValueArrayView> SpmvFunctor;
 typedef typename cusp::array1d<double, cusp::device_memory>         DeviceValueArray;
+
+class MySpmv {
+public:
+	//MySpmv(DeviceView& lhs_mass, DeviceView& A, DeviceValueArrayView& A) : m_A(A) {}
+	MySpmv(DeviceView& lhs_mass, DeviceView& lhs_phiq, DeviceValueArrayView& temp) : mlhs_mass(lhs_mass), mlhs_phiq(lhs_phiq), mtemp(temp) {}
+
+	void operator()(const DeviceValueArray& v, DeviceValueArray& Av) {
+		cusp::multiply(mlhs_mass, v, mtemp);
+		cusp::multiply(mlhs_phiq, v, Av);
+		cusp::blas::axpy(mtemp, Av, 1);
+	}
+
+private:
+	DeviceView&      mlhs_mass;
+	DeviceView&      mlhs_phiq;
+	DeviceValueArrayView& mtemp;
+};
 
 #define GRAVITYx 0
 #define GRAVITYy -9.81
@@ -56,9 +73,9 @@ public:
 	// spike stuff
 	int partitions;
 	SpikeSolver* mySolver;
-	SpmvFunctor* mySpmv;
+	//SpmvFunctor* mySpmv;
 	bool useSpike;
-	//MySpmv* m_spmv;
+	MySpmv* m_spmv;
 	// end spike stuff
 
 	ofstream posFile;
@@ -99,6 +116,8 @@ public:
 	DeviceValueArrayView phiqlam;
 	DeviceValueArrayView delta;
 
+	DeviceValueArrayView lhsVec;
+
 	DeviceView lhs;
 	DeviceView lhs_mass;
 	DeviceView lhs_phiq;
@@ -121,6 +140,7 @@ public:
 	thrust::host_vector<double> phi0_h;
 	thrust::host_vector<double> phiqlam_h;
 	thrust::host_vector<double> delta_h;
+	thrust::host_vector<double> lhsVec_h;
 	thrust::host_vector<int2> constraintPairs_h;
 
 	thrust::host_vector<int> lhsI_h;
@@ -155,6 +175,7 @@ public:
 	thrust::device_vector<double> phi0_d;
 	thrust::device_vector<double> phiqlam_d;
 	thrust::device_vector<double> delta_d;
+	thrust::device_vector<double> lhsVec_d;
 	thrust::device_vector<int2> constraintPairs_d;
 
 	thrust::device_vector<int> lhsI_d;
