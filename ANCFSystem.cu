@@ -40,11 +40,9 @@ ANCFSystem::ANCFSystem() {
 
 	// spike stuff
 	partitions = 1;
-	spike::Options  opts;
-	opts.safeFactorization = true;
-	opts.trackReordering = true;
-	opts.tolerance = 1e-2*tol;
-	mySolver = new SpikeSolver(partitions,opts);
+	solverOptions.safeFactorization = true;
+	solverOptions.trackReordering = true;
+	solverOptions.tolerance = 1e-2*tol;
 	//mySpmv = new SpmvFunctor(lhs);
 	useSpike = false;
 	m_spmv = new MySpmv(lhs_mass,lhs_phiq,lhsVec);
@@ -128,18 +126,22 @@ int ANCFSystem::setTimeStep(double h)
 int ANCFSystem::setTolerance(double tolerance)
 {
 	this->tol = tolerance;
+	solverOptions.tolerance = tolerance*1e-2;
 	return 0;
 }
 int ANCFSystem::getTimeIndex()
 {
 	return this->timeIndex;
 }
+int ANCFSystem::setSolverTolerance(double tolerance)
+{
+	solverOptions.tolerance = tolerance;
+	return 0;
+}
 int ANCFSystem::setPartitions(int partitions)
 {
-	spike::Options  opts;
-	opts.safeFactorization = true;
-	opts.trackReordering = true;
-	mySolver = new SpikeSolver(partitions,opts);
+	this->partitions = partitions;
+	return 0;
 }
 
 vector<float3> addMassMatrix(double rho, double A, double l)
@@ -852,6 +854,7 @@ int ANCFSystem::initializeSystem()
 	cusp::blas::axpby(fext,fint,eTop,1,-1);
 
 	// spike stuff
+	mySolver = new SpikeSolver(partitions,solverOptions);
 	mySolver->setup(lhs);
 	// end spike stuff
 

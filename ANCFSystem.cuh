@@ -76,6 +76,7 @@ public:
 	//SpmvFunctor* mySpmv;
 	bool useSpike;
 	MySpmv* m_spmv;
+	spike::Options  solverOptions;
 	// end spike stuff
 
 	ofstream posFile;
@@ -286,6 +287,7 @@ public:
 	int setSimulationTime(double simTime);
 	int setTimeStep(double h);
 	int setTolerance(double tolerance);
+	int setSolverTolerance(double tolerance);
 	int setPartitions(int partitions);
 	int addElement(Element* element);
 	int addParticle(Particle* particle);
