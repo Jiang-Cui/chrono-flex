@@ -77,6 +77,9 @@ public:
 	bool useSpike;
 	MySpmv* m_spmv;
 	spike::Options  solverOptions;
+	int preconditionerUpdateModulus;
+	int preconditionerMaxNewtonIterations;
+	int preconditionerMaxKrylovIterations;
 	// end spike stuff
 
 	ofstream posFile;

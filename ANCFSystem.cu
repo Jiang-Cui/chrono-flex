@@ -46,6 +46,9 @@ ANCFSystem::ANCFSystem() {
 	//mySpmv = new SpmvFunctor(lhs);
 	useSpike = false;
 	m_spmv = new MySpmv(lhs_mass,lhs_phiq,lhsVec);
+	preconditionerUpdateModulus = 10; // the preconditioner updates every ___ time steps
+	preconditionerMaxNewtonIterations = 10; // the preconditioner updates if Newton iterations are greater than ____ iterations
+	preconditionerMaxKrylovIterations = 10; // the preconditioner updates if Krylov iterations are greater than ____ iterations
 	// end spike stuff
 
 	this->timeIndex = 0;
@@ -898,7 +901,7 @@ int ANCFSystem::DoTimeStep()
 	cusp::blas::axpbypcz(p,v,a,pnew,1,h,.5*h*h);
 	cusp::blas::axpby(v,a,vnew,1,h);
 
-	if(useSpike) mySolver->update(lhs.values);
+	if(useSpike&&timeIndex%preconditionerUpdateModulus==0) mySolver->update(lhs.values);
 
 	while(norm_d>tol)//while(norm_e>tol&&norm_d>tol)
 	{
@@ -937,6 +940,7 @@ int ANCFSystem::DoTimeStep()
 			bool success = mySolver->solve(*m_spmv,eAll,delta);
 
 			spike::Stats stats = mySolver->getStats();
+			if(useSpike&&stats.numIterations>preconditionerMaxKrylovIterations) mySolver->update(lhs.values);
 
 			cout << "Success: " << success << " Iterations: "
 					<< stats.numIterations << " relResidualNorm: "
@@ -968,6 +972,8 @@ int ANCFSystem::DoTimeStep()
 		cout << norm_d << endl;
 		//cout << norm_e << " " << norm_d << endl;
 	}
+
+	if(useSpike&&it>preconditionerMaxNewtonIterations) mySolver->update(lhs.values);
 
 	cusp::copy(anew,a);
 	cusp::copy(vnew,v);
