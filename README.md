@@ -32,6 +32,7 @@ sys.addConstraint_AbsoluteSpherical(0);
 
 sys.initializeSystem();
 
+// perform a single time step
 sys.DoTimeStep();
 ```
 
