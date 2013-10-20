@@ -4,19 +4,42 @@ This is a general purpose simulator for three dimensional flexible multibody dyn
 
 Features
 ----
-This software provides a suite of flexible body suppo, including:
-- gradient-deficient beam elements
-- the ability to connect these elements with bilateral constraints
-- multiple solvers, including [Spike::GPU](http://spikegpu.sbel.org)
-- contact with friction
+This software provides a suite of flexible body support implemented in parallel on the GPU, including:
+* gradient-deficient beam elements
+* the ability to connect these elements with bilateral constraints
+* multiple solvers, including [Spike::GPU](http://spikegpu.sbel.org)
+* contact with friction
 
 Example
 ----
-asdlfkjsdaf
+```c
+// create the ANCF system
+ANCFSystem sys;
+sys.setTimeStep(1e-3);
+sys.setTolerance(1e-6);
+
+// create an element and add it to the system
+double length = 1;
+double r = 0.02;
+double E = 2e7;
+double rho = 2200;
+double nu = .3;
+Element element = Element(Node(0, 0, 0, 1, 0, 0), Node(length, 0, 0, 1, 0, 0), r, nu, E, rho);
+sys.addElement(&element);
+
+// pin the first node to the ground
+sys.addConstraint_AbsoluteSpherical(0);
+
+sys.initializeSystem();
+
+sys.DoTimeStep();
+```
 
 Install
 ----
-asdflkajsdf
+* Download and install [CUDA](https://developer.nvidia.com/cuda-downloads) 
+* Clone this repository
+* Use [CMake](http://www.cmake.org) to generate a native makefile and workspace that can be used in the compiler environment of your choice
 
 Credits
 ----
