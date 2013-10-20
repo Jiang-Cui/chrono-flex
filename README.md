@@ -41,6 +41,12 @@ Install
 * Clone this repository
 * Use [CMake](http://www.cmake.org) to generate a native makefile and workspace that can be used in the compiler environment of your choice
 
+Literature
+----
+* Melanz, D. (2012). On the validation and applications of a parallel flexible multi-body dynamics implementation. University of Wisconsin - Madison.
+* Khude, N., Stanciulescu, I., Melanz, D., & Negrut, D. (2013). Efficient Parallel Simulation of Large Flexible Body Systems With Multiple Contacts. Journal of Computational and Nonlinear Dynamics, 8(4).
+* Mazhar, H., Heyn, T., Pazouki, A., Melanz, D., Seidl, A., Bartholomew, A., … Negrut, D. (2013). Chrono: a parallel multi-physics library for rigid-body, flexible-body, and fluid dynamics. Mechanical Sciences, 4(1), 49–64.
+
 Credits
 ----
 (c) Simulation-Based Engineering Laboratory, 2013
