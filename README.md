@@ -37,7 +37,7 @@ sys.DoTimeStep();
 ```
 
 Animations
-====
+----
 * [Net Catch](https://vimeo.com/62115217)
 * [Net Swing](https://vimeo.com/52520542)
 * [Beam Cage](https://vimeo.com/58188595)
