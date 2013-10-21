@@ -36,6 +36,13 @@ sys.initializeSystem();
 sys.DoTimeStep();
 ```
 
+Animations
+====
+* [Net Catch](https://vimeo.com/62115217)
+* [Net Swing](https://vimeo.com/52520542)
+* [Beam Cage](https://vimeo.com/58188595)
+* [Worms](https://vimeo.com/58189498)
+
 Install
 ----
 * Download and install [CUDA](https://developer.nvidia.com/cuda-downloads) 
