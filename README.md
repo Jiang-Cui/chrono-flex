@@ -51,9 +51,9 @@ Install
 
 Literature
 ----
-* Melanz, D. (2012). On the validation and applications of a parallel flexible multi-body dynamics implementation. University of Wisconsin - Madison.
-* Khude, N., Stanciulescu, I., Melanz, D., & Negrut, D. (2013). Efficient Parallel Simulation of Large Flexible Body Systems With Multiple Contacts. Journal of Computational and Nonlinear Dynamics, 8(4).
-* Mazhar, H., Heyn, T., Pazouki, A., Melanz, D., Seidl, A., Bartholomew, A., … Negrut, D. (2013). Chrono: a parallel multi-physics library for rigid-body, flexible-body, and fluid dynamics. Mechanical Sciences, 4(1), 49–64.
+* Melanz, D. (2012). [On the validation and applications of a parallel flexible multi-body dynamics implementation](http://sbel.wisc.edu/documents/DanielMelanzMSthesisFinal.pdf). University of Wisconsin - Madison.
+* Khude, N., Stanciulescu, I., Melanz, D., & Negrut, D. (2013). [Efficient Parallel Simulation of Large Flexible Body Systems With Multiple Contacts](http://computationalnonlinear.asmedigitalcollection.asme.org/article.aspx?articleid=1673047). Journal of Computational and Nonlinear Dynamics, 8(4).
+* Mazhar, H., Heyn, T., Pazouki, A., Melanz, D., Seidl, A., Bartholomew, A., Negrut, D. (2013). [Chrono: a parallel multi-physics library for rigid-body, flexible-body, and fluid dynamics](http://www.mech-sci.net/4/49/2013/ms-4-49-2013.html). Mechanical Sciences, 4(1), 49–64.
 
 Credits
 ----
