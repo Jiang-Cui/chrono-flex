@@ -39,16 +39,18 @@ ANCFSystem::ANCFSystem() {
 	tol = 1e-7;
 
 	// spike stuff
-	partitions = 1;
-	solverOptions.safeFactorization = true;
-	solverOptions.trackReordering = true;
-	solverOptions.tolerance = 1e-2*tol;
-	//mySpmv = new SpmvFunctor(lhs);
-	useSpike = false;
-	m_spmv = new MySpmv(lhs_mass,lhs_phiq,lhsVec);
-	preconditionerUpdateModulus = 10; // the preconditioner updates every ___ time steps
-	preconditionerMaxNewtonIterations = 10; // the preconditioner updates if Newton iterations are greater than ____ iterations
-	preconditionerMaxKrylovIterations = 10; // the preconditioner updates if Krylov iterations are greater than ____ iterations
+	//if(useSpike) {
+		partitions = 1;
+		solverOptions.safeFactorization = true;
+		solverOptions.trackReordering = true;
+		solverOptions.tolerance = 1e-2*tol;
+		//mySpmv = new SpmvFunctor(lhs);
+		useSpike = false;
+		m_spmv = new MySpmv(lhs_mass,lhs_phiq,lhsVec);
+		preconditionerUpdateModulus = 10; // the preconditioner updates every ___ time steps
+		preconditionerMaxNewtonIterations = 21; // the preconditioner updates if Newton iterations are greater than ____ iterations
+		preconditionerMaxKrylovIterations = 9; // the preconditioner updates if Krylov iterations are greater than ____ iterations
+	//}
 	// end spike stuff
 
 	this->timeIndex = 0;
@@ -115,6 +117,14 @@ double ANCFSystem::getTimeStep()
 double ANCFSystem::getTolerance()
 {
 	return tol;
+}
+int ANCFSystem::setAlpha_HHT(double alpha)
+{
+	// should be greater than -.3, usually set to -.1
+	alphaHHT = alpha;
+	betaHHT = (1 - alphaHHT) * (1 - alphaHHT) * .25;
+	gammaHHT = 0.5 - alphaHHT;
+	return 0;
 }
 int ANCFSystem::setSimulationTime(double simTime)
 {
@@ -483,7 +493,7 @@ int ANCFSystem::addForce(Element* element, double xi, float3 force)
 	int index = element->getElementIndex();
 	int l = element->getLength_l();
 
-	fapp_h = fapp_d;
+	//fapp_h = fapp_d;
 
 	fapp_h[ 0+12*index] += (1 - 3 * xi * xi + 2 * pow( xi, 3)) * force.x;
 	fapp_h[ 1+12*index] += (1 - 3 * xi * xi + 2 * pow( xi, 3)) * force.y;
@@ -857,9 +867,19 @@ int ANCFSystem::initializeSystem()
 	cusp::blas::axpby(fext,fint,eTop,1,-1);
 
 	// spike stuff
-	mySolver = new SpikeSolver(partitions,solverOptions);
-	mySolver->setup(lhs);
+	if(useSpike) {
+		mySolver = new SpikeSolver(partitions,solverOptions);
+		mySolver->setup(lhs);
+	}
 	// end spike stuff
+
+	// cusp stuff
+	//M = new cusp::precond::scaled_bridson_ainv<double, cusp::device_memory>(lhs, .1);
+	// end cusp stuff
+
+	char filename[100];
+	sprintf(filename, "./lhs.txt");
+	cusp::io::write_matrix_market_file(lhs, filename);
 
 	//cusp::print(lhs);
 	//cusp::print(eAll);
@@ -867,8 +887,28 @@ int ANCFSystem::initializeSystem()
 
 	//lhs.sort_by_row();
 	//cusp::blas::fill(delta,0);
-	bool success = mySolver->solve(*m_spmv,eAll,anewAll);
-	spike::Stats stats = mySolver->getStats();
+	if(!useSpike)
+	{
+		// SOLVE USING CUSP
+		stencil lhsStencil(anewAll.size(), lhs_mass, lhs_phiq, lhsVec);
+
+		cusp::default_monitor<double> monitor(eAll, 1000, 1e-2*tol);
+
+		//cusp::precond::diagonal<double, cusp::device_memory> M(lhs);
+
+		// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
+		cusp::krylov::cg(lhsStencil, delta, eAll, monitor);//, M);
+
+		//cout << "Success: " << monitor.converged() << " Iterations: "
+		//		<< monitor.iteration_count() << " relResidualNorm: "
+		//		<< monitor.relative_tolerance() << " norm_d: ";
+	}
+
+	if(useSpike)
+	{
+		bool success = mySolver->solve(*m_spmv,eAll,anewAll);
+		spike::Stats stats = mySolver->getStats();
+	}
 
 	//cusp::print(delta);
 	//cin.get();
@@ -901,9 +941,13 @@ int ANCFSystem::DoTimeStep()
 	cusp::blas::axpbypcz(p,v,a,pnew,1,h,.5*h*h);
 	cusp::blas::axpby(v,a,vnew,1,h);
 
-	if(useSpike&&timeIndex%preconditionerUpdateModulus==0) mySolver->update(lhs.values);
+	if(useSpike&&timeIndex%preconditionerUpdateModulus==0)
+	{
+			mySolver->update(lhs.values);
+			printf("Preconditioner updated!\n");
+	}
 
-	while(norm_d>tol)//while(norm_e>tol&&norm_d>tol)
+	while(norm_d>tol&&it<20)//while(norm_e>tol&&norm_d>tol)
 	{
 		it++;
 
@@ -912,10 +956,14 @@ int ANCFSystem::DoTimeStep()
 
 		cusp::multiply(phiq,lambda,phiqlam);
 		cusp::multiply(mass,anew,eTop);
-		cusp::blas::axpbypcz(eTop,fcon,fint,eTop,1,-1,1);
+		cusp::blas::axpbypcz(eTop,fapp,fint,eTop,1,-1,1);
 		cusp::blas::axpby(eTop,fext,eTop,1,-1);
 		cusp::blas::axpy(phiqlam,eTop,1);
 		cusp::blas::copy(phi,eBottom);
+
+//		cusp::print(fapp);
+//		cusp::print(fint);
+//		cin.get();
 
 		// SOLVE THE LINEAR SYSTEM
 		cusp::blas::fill(delta, 0);
@@ -926,12 +974,14 @@ int ANCFSystem::DoTimeStep()
 
 			cusp::default_monitor<double> monitor(eAll, 1000, 1e-2*tol);
 
-			// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
-			cusp::krylov::cg(lhsStencil, delta, eAll, monitor);
+			//cusp::precond::diagonal<double, cusp::device_memory> M(lhs);
 
-			cout << "Success: " << monitor.converged() << " Iterations: "
-					<< monitor.iteration_count() << " relResidualNorm: "
-					<< monitor.relative_tolerance() << " norm_d: ";
+			// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
+			cusp::krylov::cg(lhsStencil, delta, eAll, monitor);//, M);
+
+			//cout << "Success: " << monitor.converged() << " Iterations: "
+			//		<< monitor.iteration_count() << " relResidualNorm: "
+			//		<< monitor.relative_tolerance() << " norm_d: ";
 		}
 
 		if(useSpike)
@@ -940,11 +990,15 @@ int ANCFSystem::DoTimeStep()
 			bool success = mySolver->solve(*m_spmv,eAll,delta);
 
 			spike::Stats stats = mySolver->getStats();
-			if(useSpike&&stats.numIterations>preconditionerMaxKrylovIterations) mySolver->update(lhs.values);
+			if(useSpike&&stats.numIterations>preconditionerMaxKrylovIterations)
+			{
+				mySolver->update(lhs.values);
+				printf("Preconditioner updated!\n");
+			}
 
-			cout << "Success: " << success << " Iterations: "
-					<< stats.numIterations << " relResidualNorm: "
-					<< stats.relResidualNorm << " norm_d: ";
+			//cout << "Success: " << success << " Iterations: "
+			//		<< stats.numIterations << " relResidualNorm: "
+			//		<< stats.relResidualNorm << " norm_d: ";
 		}
 		// END SOLVE THE LINEAR SYSTEM
 
@@ -969,11 +1023,15 @@ int ANCFSystem::DoTimeStep()
 		//norm_e = cusp::blas::nrm2(eAll)/pow((double)elements.size(),2);
 		if(it==1) norm_d_0 = cusp::blas::nrm2(delta);
 		norm_d = cusp::blas::nrm2(delta)/norm_d_0;
-		cout << norm_d << endl;
+		//out << norm_d << endl;
 		//cout << norm_e << " " << norm_d << endl;
 	}
 
-	if(useSpike&&it>preconditionerMaxNewtonIterations) mySolver->update(lhs.values);
+	if(useSpike&&it>preconditionerMaxNewtonIterations)
+	{
+		mySolver->update(lhs.values);
+		//printf("Preconditioner updated!\n");
+	}
 
 	cusp::copy(anew,a);
 	cusp::copy(vnew,v);
@@ -992,8 +1050,10 @@ int ANCFSystem::DoTimeStep()
 	//vParticle_h = vParticle_d;
 
 	//printf("Time: %f (it = %d, PTA pos = (%f, %.13f, %f)\n",this->getCurrentTime(),it,getXYZPosition(elements.size()-1,1).x,getXYZPosition(elements.size()-1,1).y,getXYZPosition(elements.size()-1,1).z);
-	printf("Time: %f (Simulation time = %f ms, it = %d)\n",this->getCurrentTime(), elapsedTime,it);
+	//printf("Time: %f (Simulation time = %f ms, it = %d)\n",this->getCurrentTime(), elapsedTime,it);
+	printf("%f, %f, %d, \n",this->getCurrentTime(), elapsedTime, it);
 	//printf("Pos = (%f, %.13f, %f)\n",getXYZPosition(elements.size()-1,1).x,getXYZPosition(elements.size()-1,1).y,getXYZPosition(elements.size()-1,1).z);
+	//printf("%f\n",getXYZPosition(elements.size()-1,1).y);
 
 	time+=h;
 	timeIndex++;
@@ -1057,8 +1117,12 @@ int ANCFSystem::saveLHS()
 
 int ANCFSystem::writeToFile()
 {
+	char filename1[100];
+	sprintf(filename1, "./posData/lhs%d.dat", fileIndex);
+	cusp::io::write_matrix_market_file(lhs, filename1);
+
 	char filename[100];
-	sprintf(filename, "../posData/pos%d.dat", fileIndex);
+	sprintf(filename, "./posData/pos%d.dat", fileIndex);
 	posFile.open(filename);
 	p_h = p_d;
 	double* posAll = CASTD1(p_h);
@@ -1066,13 +1130,13 @@ int ANCFSystem::writeToFile()
 	float3 posPart;
 	double l;
 	double r;
-	posFile << elements.size() << ", " << particles.size() << ", " << "0" << "," << endl;
-	for(int i=0;i<particles.size();i++)
-	{
-		r = particles[i].getRadius();
-		posPart = getXYZPositionParticle(i);
-		posFile << r << ", " << posPart.x << ", " << posPart.y << ", " << posPart.z << "," << endl;
-	}
+	posFile << elements.size()  << endl;
+//	for(int i=0;i<particles.size();i++)
+//	{
+//		r = particles[i].getRadius();
+//		posPart = getXYZPositionParticle(i);
+//		posFile << r << ", " << posPart.x << ", " << posPart.y << ", " << posPart.z << "," << endl;
+//	}
 	for(int i=0;i<elements.size();i++)
 	{
 		l = elements[i].getLength_l();

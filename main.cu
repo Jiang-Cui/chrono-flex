@@ -157,7 +157,7 @@ void CallBackMotionFunc(int x, int y) {
 
 int main(int argc, char** argv)
 {
-	sys.setTimeStep(1e-3);
+	sys.setTimeStep(1e-2);
 	sys.setTolerance(1e-6);
 	sys.useSpike = atoi(argv[1]);
 	sys.numContactPoints = 30;
@@ -165,22 +165,33 @@ int main(int argc, char** argv)
 
 	if(argc == 3)
 	{
-		double length = 1;
-		double r = 0.02;
-		double E = 2e7;
-		double rho = 2200;
+		sys.setAlpha_HHT(-10);
+		int numElements = 1;
+		double length = 2;
+		double lengthElement = length/numElements;
+		double r = 0.01;
+		double E = 2e11;
+		double rho = 7810;
 		double nu = .3;
-		Element element = Element(Node(0, 0, 0, 1, 0, 0), Node(length, 0, 0, 1, 0, 0), r, nu, E, rho);
+		double P = -60;
+		Element element = Element(Node(0, 0, 0, 1, 0, 0), Node(lengthElement, 0, 0, 1, 0, 0), r, nu, E, rho);
 		sys.addElement(&element);
-		sys.addConstraint_AbsoluteSpherical(0);
+		sys.addConstraint_AbsoluteFixed(0);
 		sys.numContactPoints = 10;
 
-		for(int i=1;i<2;i++)
+		for(int i=1;i<numElements;i++)
 		{
-			element = Element(Node(i*length, 0, 0, 1, 0, 0), Node((i+1)*length, 0, 0, 1, 0, 0), r, nu, E, rho);
+			element = Element(Node(i*lengthElement, 0, 0, 1, 0, 0), Node((i+1)*lengthElement, 0, 0, 1, 0, 0), r, nu, E, rho);
 			sys.addElement(&element);
 			sys.addConstraint_RelativeFixed(sys.elements[i-1], 1,sys.elements[i], 0);
 		}
+		sys.addForce(&element,1,make_float3(0,P,0));
+
+//		// should get deflection = PL^3/(3EI)
+//		double I = .25*PI*r*r*r*r;
+//		double deflection = P*pow(length,3)/(3*E*I);
+//		cout << deflection << endl;
+//		cin.get();
 	}
 	else
 	{
@@ -279,29 +290,32 @@ int main(int argc, char** argv)
 	sys.initializeSystem();
 	printf("System Initialized (%d beams, %d constraints, %d equations)!\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
 
-//	// Uncomment if you don't want visualization
-	while(sys.timeIndex<=30)
+	// Uncomment if you don't want visualization
+	while(sys.timeIndex<200)
 	{
-		//if(sys.getTimeIndex()%100==0) sys.writeToFile();
+		if(sys.getTimeIndex()%10==0)
+		{
+			sys.writeToFile();
+		}
 		sys.DoTimeStep();
 	}
 	printf("Total time to simulate: %f [s]\n",sys.timeToSimulate);
 
-//	// Uncomment if you want visualization
-//	glutInit(&argc, argv);
-//	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-//	glutInitWindowPosition(0,0);
-//	glutInitWindowSize(1024	,512);
-//	glutCreateWindow("MAIN");
-//	glutDisplayFunc(renderSceneAll);
-//	glutIdleFunc(renderSceneAll);
-//	glutReshapeFunc(changeSize);
-//	glutIgnoreKeyRepeat(0);
-//	glutKeyboardFunc(CallBackKeyboardFunc);
-//	glutMouseFunc(CallBackMouseFunc);
-//	glutMotionFunc(CallBackMotionFunc);
-//	initScene();
-//	glutMainLoop();
+	// Uncomment if you want visualization
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+	glutInitWindowPosition(0,0);
+	glutInitWindowSize(1024	,512);
+	glutCreateWindow("MAIN");
+	glutDisplayFunc(renderSceneAll);
+	glutIdleFunc(renderSceneAll);
+	glutReshapeFunc(changeSize);
+	glutIgnoreKeyRepeat(0);
+	glutKeyboardFunc(CallBackKeyboardFunc);
+	glutMouseFunc(CallBackMouseFunc);
+	glutMotionFunc(CallBackMotionFunc);
+	initScene();
+	glutMainLoop();
 
 	return 0;
 }

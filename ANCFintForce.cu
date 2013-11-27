@@ -115,7 +115,94 @@ __global__ void curvatDerivUpdate(double ptj, double* p, double* k, double* ke, 
 		ke[11] = pow(g, -0.2e1) * (g * (fspecial * f1.x * (-Sx[3] * rxx.y - rx.y * Sxx[3]) + fspecial * f1.y * (Sx[3] * rxx.x + rx.x * Sxx[3])) - f * (0.3e1 * g1 * Sx[0] * p[2] + 0.3e1 * g1 * Sx[1] * p[5] + 0.3e1 * g1 * Sx[2] * p[8] + 0.3e1 * g1 * Sx[3] * p[11]) * Sx[3]);
 	}
 }
+/* Radu's code
+__global__ void curvatDerivUpdate(double ptj, double* p, double* k, double* ke, double* Sx, double* Sxx, Material* materials, int numElements)
+{
+	int i = threadIdx.x+blockIdx.x*blockDim.x;
 
+	if(i<numElements)
+	{
+		double L = materials[i].l;
+		double x = .5*L*(1.+ptj);
+
+		p = &p[12*i];
+		ke = &ke[12*i];
+		Sx = &Sx[4*i];
+		Sxx = &Sxx[4*i];
+
+		double e1  = p[0];
+		double e2  = p[1];
+		double e3  = p[2];
+		double e4  = p[3];
+		double e5  = p[4];
+		double e6  = p[5];
+
+		double e7  = p[6];
+		double e8  = p[7];
+		double e9  = p[8];
+		double e10 = p[9];
+		double e11 = p[10];
+		double e12 = p[11];
+
+//		double Sx[4];
+//		double Sxx[4];
+
+		ancf_shape_derivative_x(Sx, x, L);
+		ancf_shape_derivative2_x(Sxx, x, L);
+
+		double rx[3];
+		double rxx[3];
+
+		rx[0] = Sx[0]*e1 + Sx[1]*e4 + Sx[2]*e7 + Sx[3]*e10;
+		rx[1] = Sx[0]*e2 + Sx[1]*e5 + Sx[2]*e8 + Sx[3]*e11;
+		rx[2] = Sx[0]*e3 + Sx[1]*e6 + Sx[2]*e9 + Sx[3]*e12;
+
+		rxx[0] = Sxx[0]*e1 + Sxx[1]*e4 + Sxx[2]*e7 + Sxx[3]*e10;
+		rxx[1] = Sxx[0]*e2 + Sxx[1]*e5 + Sxx[2]*e8 + Sxx[3]*e11;
+		rxx[2] = Sxx[0]*e3 + Sxx[1]*e6 + Sxx[2]*e9 + Sxx[3]*e12;
+
+		double rx_rx   =  rx[0] *  rx[0] +  rx[1] *  rx[1] +  rx[2] *  rx[2];
+		double rx_rxx  =  rx[0] * rxx[0] +  rx[1] * rxx[1] +  rx[2] * rxx[2];
+		double rxx_rxx = rxx[0] * rxx[0] + rxx[1] * rxx[1] + rxx[2] * rxx[2];
+
+		// Define v = rx X rxx
+		double v[3];
+
+		v[0] = rx[1]*rxx[2]-rx[2]*rxx[1];
+		v[1] = -rx[0]*rxx[2]+rx[2]*rxx[0];
+		v[2] = rx[0]*rxx[1]-rx[1]*rxx[0];
+
+		// Calculate the squared norm of v using the Lagrange identity
+		double v_v = rx_rx * rxx_rxx - rx_rxx * rx_rxx;
+
+		// Define some temporary variables
+		double inv_rx_rx_cubed = 1.0 / (rx_rx * rx_rx * rx_rx);
+		double coef = 3 * v_v / rx_rx;
+
+		// Calculate k
+		k[i] = sqrt(v_v * inv_rx_rx_cubed);
+		printf("K = %f\n", k[i]);
+
+		// Calculate the integrand for Qk (this is k * k_e)
+		inv_rx_rx_cubed = -inv_rx_rx_cubed/k[i]; // divide by k to get k_e
+		ke[0]  = -inv_rx_rx_cubed * ( -(Sx[0]*rxx[1]-Sxx[0]*rx[1])*v[2]+(Sx[0]*rxx[2]-Sxx[0]*rx[2])*v[1] + coef*Sx[0]*rx[0] );
+		ke[1]  = -inv_rx_rx_cubed * (  (Sx[0]*rxx[0]-Sxx[0]*rx[0])*v[2]-(Sx[0]*rxx[2]-Sxx[0]*rx[2])*v[0] + coef*Sx[0]*rx[1] );
+		ke[2]  = -inv_rx_rx_cubed * ( -(Sx[0]*rxx[0]-Sxx[0]*rx[0])*v[1]+(Sx[0]*rxx[1]-Sxx[0]*rx[1])*v[0] + coef*Sx[0]*rx[2] );
+		ke[3]  = -inv_rx_rx_cubed * ( -(Sx[1]*rxx[1]-Sxx[1]*rx[1])*v[2]+(Sx[1]*rxx[2]-Sxx[1]*rx[2])*v[1] + coef*Sx[1]*rx[0] );
+		ke[4]  = -inv_rx_rx_cubed * (  (Sx[1]*rxx[0]-Sxx[1]*rx[0])*v[2]-(Sx[1]*rxx[2]-Sxx[1]*rx[2])*v[0] + coef*Sx[1]*rx[1] );
+		ke[5]  = -inv_rx_rx_cubed * ( -(Sx[1]*rxx[0]-Sxx[1]*rx[0])*v[1]+(Sx[1]*rxx[1]-Sxx[1]*rx[1])*v[0] + coef*Sx[1]*rx[2] );
+		ke[6]  = -inv_rx_rx_cubed * ( -(Sx[2]*rxx[1]-Sxx[2]*rx[1])*v[2]+(Sx[2]*rxx[2]-Sxx[2]*rx[2])*v[1] + coef*Sx[2]*rx[0] );
+		ke[7]  = -inv_rx_rx_cubed * (  (Sx[2]*rxx[0]-Sxx[2]*rx[0])*v[2]-(Sx[2]*rxx[2]-Sxx[2]*rx[2])*v[0] + coef*Sx[2]*rx[1] );
+		ke[8]  = -inv_rx_rx_cubed * ( -(Sx[2]*rxx[0]-Sxx[2]*rx[0])*v[1]+(Sx[2]*rxx[1]-Sxx[2]*rx[1])*v[0] + coef*Sx[2]*rx[2] );
+		ke[9]  = -inv_rx_rx_cubed * ( -(Sx[3]*rxx[1]-Sxx[3]*rx[1])*v[2]+(Sx[3]*rxx[2]-Sxx[3]*rx[2])*v[1] + coef*Sx[3]*rx[0] );
+		ke[10] = -inv_rx_rx_cubed * (  (Sx[3]*rxx[0]-Sxx[3]*rx[0])*v[2]-(Sx[3]*rxx[2]-Sxx[3]*rx[2])*v[0] + coef*Sx[3]*rx[1] );
+		ke[11] = -inv_rx_rx_cubed * ( -(Sx[3]*rxx[0]-Sxx[3]*rx[0])*v[1]+(Sx[3]*rxx[1]-Sxx[3]*rx[1])*v[0] + coef*Sx[3]*rx[2] );
+
+		for(int idx = 0;idx<12;idx++) printf("Ke[%d] = %f\n", idx, ke[idx]);
+		printf("\n");
+	}
+}
+*/
 __global__ void addInternalForceComponent(double* fint, double* strainD_shared, double* strainVec, double* stiffness, Material* materials, double wtl, double betah2, int numElements, int check,int updateLhs)
 {
 	int i = threadIdx.x+blockIdx.x*blockDim.x;

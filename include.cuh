@@ -32,6 +32,7 @@
 #include <cusp/krylov/gmres.h>
 #include <cusp/krylov/cg.h>
 #include <cusp/precond/ainv.h>
+#include <cusp/precond/diagonal.h>
 #include <cusp/transpose.h>
 #include <thrust/functional.h>
 #include <cusp/linear_operator.h>

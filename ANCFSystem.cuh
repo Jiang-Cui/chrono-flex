@@ -17,6 +17,8 @@
 #include <spike/solver.h>
 #include <spike/spmv.h>
 
+typedef float PREC_REAL;
+
 // use array1d_view to wrap the individual arrays
 typedef typename cusp::array1d_view<thrust::device_ptr<int> > DeviceIndexArrayView;
 typedef typename cusp::array1d_view<thrust::device_ptr<double> > DeviceValueArrayView;
@@ -24,7 +26,8 @@ typedef typename cusp::array1d_view<thrust::device_ptr<double> > DeviceValueArra
 //combine the three array1d_views into a coo_matrix_view
 typedef typename cusp::coo_matrix_view<DeviceIndexArrayView, DeviceIndexArrayView, DeviceValueArrayView> DeviceView;
 
-typedef typename spike::Solver<DeviceView, DeviceValueArrayView> SpikeSolver;
+typedef typename spike::Solver<DeviceValueArrayView, PREC_REAL>                 SpikeSolver;
+//typedef typename spike::Solver<DeviceView, DeviceValueArrayView> SpikeSolver;
 //typedef typename spike::SpmvCusp<DeviceView, DeviceValueArrayView> SpmvFunctor;
 typedef typename cusp::array1d<double, cusp::device_memory>         DeviceValueArray;
 
@@ -81,6 +84,10 @@ public:
 	int preconditionerMaxNewtonIterations;
 	int preconditionerMaxKrylovIterations;
 	// end spike stuff
+
+	// cusp stuff
+	//cusp::precond::scaled_bridson_ainv<double, cusp::device_memory>* M;
+	// end cusp stuff
 
 	ofstream posFile;
 	ofstream resultsFile1;
@@ -287,6 +294,7 @@ public:
 	double getTimeStep();
 	double getTolerance();
 	int getTimeIndex();
+	int setAlpha_HHT(double alpha);
 	int setSimulationTime(double simTime);
 	int setTimeStep(double h);
 	int setTolerance(double tolerance);
