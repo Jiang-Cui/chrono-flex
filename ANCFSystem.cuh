@@ -133,7 +133,7 @@ public:
 	DeviceView lhs_mass;
 	DeviceView lhs_phiq;
 	DeviceView phiq;
-	DeviceView mass;
+	//DeviceView mass;
 
 	// host vectors
 	thrust::host_vector<double> e_h;
@@ -317,13 +317,14 @@ public:
 	int createMass();
 	int initializeSystem();
 	int initializeDevice();
-	int updateInternalForces(int updateLhs);
+	int updateInternalForces();
 	int updateInternalForcesCPU();
 	int updateInternalForcesARMA();
 	int updatePhiq();
 	int updatePhi();
 	int writeToFile();
 	int saveLHS();
+	int resetLeftHandSideMatrix();
 
 //	Node getFirstNode(Element element)
 //	{

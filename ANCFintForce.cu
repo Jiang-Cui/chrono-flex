@@ -459,14 +459,19 @@ __global__ void addMass(double* stiffness, Material* materials, int numElements)
 	}
 }
 
-int ANCFSystem::updateInternalForces(int updateLhs)
+int ANCFSystem::resetLeftHandSideMatrix()
 {
+	// populate the lhs with only the mass, must be done before updating internal forces!
+	thrust::fill_n(lhs_d.begin(),elements.size()*12*12,0.0); //Clear the matrix
+	addMass<<<dimGridElement,dimBlockElement>>>(CASTD1(lhs_d),CASTM1(materials_d),elements.size()); // add terms from mass
+}
+
+int ANCFSystem::updateInternalForces()
+{
+	int updateLhs = 1;
 	thrust::fill(fint_d.begin(),fint_d.end(),0.0); //Clear internal forces
-	if(updateLhs)
-	{
-		thrust::fill_n(lhs_d.begin(),elements.size()*12*12,0.0); //Clear internal forces
-		addMass<<<dimGridElement,dimBlockElement>>>(CASTD1(lhs_d),CASTM1(materials_d),elements.size());
-	}
+
+	ANCFSystem::resetLeftHandSideMatrix(); // populate the lhs with only the mass
 
 	for(int j=0;j<pt5.size();j++)
 	{

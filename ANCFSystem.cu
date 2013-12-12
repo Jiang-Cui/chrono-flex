@@ -465,15 +465,15 @@ int ANCFSystem::addElement(Element* element)
 	fext_h.push_back(-rho * A * a * a * GRAVITYy / 0.12e2);
 	fext_h.push_back(-rho * A * a * a * GRAVITYz / 0.12e2);
 	
-	//add mass matrix
-	vector<float3> mass = addMassMatrix(rho,A,a);
-
-	for(int i=0;i<mass.size();i++)
-	{
-		massI_h.push_back(mass[i].x+12*(elements.size()-1));
-		massJ_h.push_back(mass[i].y+12*(elements.size()-1));
-		mass_h.push_back(static_cast<double>(mass[i].z));
-	}
+//	//add mass matrix
+//	vector<float3> mass = addMassMatrix(rho,A,a);
+//
+//	for(int i=0;i<mass.size();i++)
+//	{
+//		massI_h.push_back(mass[i].x+12*(elements.size()-1));
+//		massJ_h.push_back(mass[i].y+12*(elements.size()-1));
+//		mass_h.push_back(static_cast<double>(mass[i].z));
+//	}
 
 	for(int i=0;i<12;i++)
 	{
@@ -754,33 +754,33 @@ int ANCFSystem::initializeDevice()
 	return 0;
 }
 
-int ANCFSystem::createMass() // used in Newton iteration, nice to keep it separate (but not memory efficient)
-{
-	massI_d = massI_h;
-	massJ_d = massJ_h;
-	mass_d = mass_h;
-
-	// create mass matrix using cusp library (shouldn't change)
-	thrust::device_ptr<int> wrapped_device_I(CASTI1(massI_d));
-	DeviceIndexArrayView row_indices = DeviceIndexArrayView(wrapped_device_I, wrapped_device_I + massI_d.size());
-
-	thrust::device_ptr<int> wrapped_device_J(CASTI1(massJ_d));
-	DeviceIndexArrayView column_indices = DeviceIndexArrayView(wrapped_device_J, wrapped_device_J + massJ_d.size());
-
-	thrust::device_ptr<double> wrapped_device_V(CASTD1(mass_d));
-	DeviceValueArrayView values = DeviceValueArrayView(wrapped_device_V, wrapped_device_V + mass_d.size());
-
-	mass = DeviceView(p_h.size(), p_h.size(), mass_d.size(), row_indices, column_indices, values);
-	mass.sort_by_row();
-
-	return 0;
-}
+//int ANCFSystem::createMass() // used in Newton iteration, nice to keep it separate (but not memory efficient)
+//{
+//	massI_d = massI_h;
+//	massJ_d = massJ_h;
+//	mass_d = mass_h;
+//
+//	// create mass matrix using cusp library (shouldn't change)
+//	thrust::device_ptr<int> wrapped_device_I(CASTI1(massI_d));
+//	DeviceIndexArrayView row_indices = DeviceIndexArrayView(wrapped_device_I, wrapped_device_I + massI_d.size());
+//
+//	thrust::device_ptr<int> wrapped_device_J(CASTI1(massJ_d));
+//	DeviceIndexArrayView column_indices = DeviceIndexArrayView(wrapped_device_J, wrapped_device_J + massJ_d.size());
+//
+//	thrust::device_ptr<double> wrapped_device_V(CASTD1(mass_d));
+//	DeviceValueArrayView values = DeviceValueArrayView(wrapped_device_V, wrapped_device_V + mass_d.size());
+//
+//	mass = DeviceView(p_h.size(), p_h.size(), mass_d.size(), row_indices, column_indices, values);
+//	mass.sort_by_row();
+//
+//	return 0;
+//}
 
 int ANCFSystem::initializeSystem()
 {
 	ANCFSystem::updatePhiq();
 	ANCFSystem::calculateInitialPhi();
-	ANCFSystem::createMass();
+	//ANCFSystem::createMass();
 
 	for(int i=0;i<constraints.size();i++)
 	{
@@ -861,7 +861,8 @@ int ANCFSystem::initializeSystem()
 	//detector.setBoundingBoxPointer(&aabb_data_d);
 	//detector.detectPossibleCollisions();
 
-	ANCFSystem::updateInternalForces(1);
+	ANCFSystem::resetLeftHandSideMatrix();
+	ANCFSystem::updateInternalForces();
 
 	//cusp::blas::axpy(fint,eTop,-1);
 	cusp::blas::axpby(fext,fint,eTop,1,-1);
@@ -951,11 +952,11 @@ int ANCFSystem::DoTimeStep()
 	{
 		it++;
 
-		ANCFSystem::updateInternalForces(1);
 		ANCFSystem::updatePhi();
-
 		cusp::multiply(phiq,lambda,phiqlam);
-		cusp::multiply(mass,anew,eTop);
+		ANCFSystem::resetLeftHandSideMatrix();
+		cusp::multiply(lhs_mass,anew,eTop); //cusp::multiply(mass,anew,eTop);
+		ANCFSystem::updateInternalForces();
 		cusp::blas::axpbypcz(eTop,fapp,fint,eTop,1,-1,1);
 		cusp::blas::axpby(eTop,fext,eTop,1,-1);
 		cusp::blas::axpy(phiqlam,eTop,1);
@@ -1030,7 +1031,7 @@ int ANCFSystem::DoTimeStep()
 	if(useSpike&&it>preconditionerMaxNewtonIterations)
 	{
 		mySolver->update(lhs.values);
-		//printf("Preconditioner updated!\n");
+		printf("Preconditioner updated!\n");
 	}
 
 	cusp::copy(anew,a);
