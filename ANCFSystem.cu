@@ -1130,7 +1130,7 @@ int ANCFSystem::writeToFile()
 	float3 posPart;
 	double l;
 	double r;
-	posFile << elements.size()  << endl;
+	posFile << elements.size()<<  ", "  << endl;
 //	for(int i=0;i<particles.size();i++)
 //	{
 //		r = particles[i].getRadius();

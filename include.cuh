@@ -20,7 +20,7 @@
 #include <thrust/remove.h>
 #include <GL/glut.h>
 #include "omp.h"
-#include <sscd.h>
+//#include <sscd.h>
 
 #include <cusp/coo_matrix.h>
 #include <cusp/multiply.h>

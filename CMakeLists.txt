@@ -27,10 +27,10 @@ SET(SPIKE_INC_DIR "" CACHE PATH "Where is the SPIKE include directory?")
 include_directories(${SPIKE_INC_DIR})
 
 ## include SSCD
-SET(SSCD_INC_DIR "" CACHE PATH "Where is the SSCD include directory?")
-include_directories(${SSCD_INC_DIR})
-SET(SSCD_LIB_PATH       ""   CACHE PATH "Where is SSCD located")		 
-FIND_LIBRARY( SSCD_LIB NAMES sscd PATHS ${SSCD_LIB_PATH})
+#SET(SSCD_INC_DIR "" CACHE PATH "Where is the SSCD include directory?")
+#include_directories(${SSCD_INC_DIR})
+#SET(SSCD_LIB_PATH       ""   CACHE PATH "Where is SSCD located")		 
+#FIND_LIBRARY( SSCD_LIB NAMES sscd PATHS ${SSCD_LIB_PATH})
 
 ## Example MPI program
 #enable_mpi_support()
@@ -59,13 +59,13 @@ find_package("OpenGL")
 
 # Example CUDA program
 enable_cuda_support()
-cuda_add_library(implicitbeamsgpu SHARED ANCFSystem.cuh ANCFSystem.cu ANCFintForce.cu include.cuh ANCFConstraints.cu ANCFContact.cu)
+cuda_add_library(implicitbeamsgpu SHARED ANCFSystem.cuh ANCFSystem.cu ANCFintForce.cu include.cuh ANCFConstraints.cu)# ANCFContact.cu)
 target_link_libraries(implicitbeamsgpu 
 	${GLUT_LIBRARIES}
 	${FREEGLUT_LIB}
 	${OPENGL_LIBRARIES}
 #	${ARMADILLO_LIBRARIES}
-	${SSCD_LIB}
+#	${SSCD_LIB}
 	)
 cuda_add_executable(ImplicitBeamsGPU main.cu)
 target_link_libraries(ImplicitBeamsGPU implicitbeamsgpu)

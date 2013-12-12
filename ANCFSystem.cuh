@@ -246,7 +246,7 @@ public:
 	thrust::device_vector<double> aParticle_d;
 	thrust::device_vector<double> fParticle_d;
 
-	CollisionDetector detector;
+	//CollisionDetector detector;
 	thrust::host_vector<float3> aabb_data_h;
 	thrust::device_vector<float3> aabb_data_d;
 	//thrust::host_vector<float3> aabbMax;

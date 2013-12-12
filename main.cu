@@ -7,10 +7,11 @@
 bool updateDraw = 1;
 bool showSphere = 1;
 
+// Create the system (placed outside of main so it is available to the OpenGL code)
 ANCFSystem sys;
 OpenGLCamera oglcamera(camreal3(-1,1,-1),camreal3(0,0,0),camreal3(0,1,0),.01);
 
-//RENDERING STUFF
+// OPENGL RENDERING CODE //
 void changeSize(int w, int h) {
 	if(h == 0) {h = 1;}
 	float ratio = 1.0* w / h;
@@ -155,6 +156,8 @@ void CallBackMotionFunc(int x, int y) {
 	oglcamera.Move2D(x, y);
 }
 
+// END OPENGL RENDERING CODE //
+
 int main(int argc, char** argv)
 {
 	sys.setTimeStep(1e-2);
@@ -290,17 +293,6 @@ int main(int argc, char** argv)
 	sys.initializeSystem();
 	printf("System Initialized (%d beams, %d constraints, %d equations)!\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
 
-	// Uncomment if you don't want visualization
-	while(sys.timeIndex<200)
-	{
-		if(sys.getTimeIndex()%10==0)
-		{
-			sys.writeToFile();
-		}
-		sys.DoTimeStep();
-	}
-	printf("Total time to simulate: %f [s]\n",sys.timeToSimulate);
-
 	// Uncomment if you want visualization
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
@@ -316,6 +308,16 @@ int main(int argc, char** argv)
 	glutMotionFunc(CallBackMotionFunc);
 	initScene();
 	glutMainLoop();
+
+	while(sys.timeIndex<200)
+	{
+		if(sys.getTimeIndex()%10==0)
+		{
+			sys.writeToFile();
+		}
+		sys.DoTimeStep();
+	}
+	printf("Total time to simulate: %f [s]\n",sys.timeToSimulate);
 
 	return 0;
 }
