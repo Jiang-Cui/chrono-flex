@@ -883,22 +883,20 @@ int ANCFSystem::saveLHS()
 	return 0;
 }
 
-int ANCFSystem::writeToFile()
+int ANCFSystem::writeToFile(string fileName)
 {
-	char filename1[100];
-	sprintf(filename1, "./posData/lhs%d.dat", fileIndex);
-	cusp::io::write_matrix_market_file(lhs, filename1);
+	//char filename1[100];
+	//sprintf(filename1, "./posData/lhs%d.dat", fileIndex);
+	//cusp::io::write_matrix_market_file(lhs, filename1);
 
-	char filename[100];
-	sprintf(filename, "./posData/pos%d.dat", fileIndex);
-	posFile.open(filename);
+	posFile.open(fileName.c_str());
 	p_h = p_d;
 	double* posAll = CASTD1(p_h);
 	double* pos;
 	float3 posPart;
 	double l;
 	double r;
-	posFile << elements.size()<<  ", "  << endl;
+	posFile << elements.size()<<  ","  << endl;
 //	for(int i=0;i<particles.size();i++)
 //	{
 //		r = particles[i].getRadius();
@@ -910,12 +908,11 @@ int ANCFSystem::writeToFile()
 		l = elements[i].getLength_l();
 		r = elements[i].getRadius();
 		pos = &posAll[12*i];
-		posFile << r << ", " << l;
-		for(int i=0;i<12;i++) posFile << ", " << pos[i];
+		posFile << r << "," << l;
+		for(int i=0;i<12;i++) posFile << "," << pos[i];
 		posFile << ","<< endl;
 	}
 	posFile.close();
-	fileIndex++;
 
 	return 0;
 }

@@ -162,11 +162,13 @@ int main(int argc, char** argv)
 {
 	bool visualize = false;
 
-	sys.setTimeStep(1e-2);
+	sys.setTimeStep(1e-3);
 	sys.setTolerance(1e-6);
 	sys.useSpike = atoi(argv[1]);
 	sys.numContactPoints = 30;
 	sys.setPartitions(atoi(argv[2]));
+
+	string data_folder;
 
 	if(argc == 3)
 	{
@@ -207,6 +209,7 @@ int main(int argc, char** argv)
 		double rho = 2200;
 		double nu = .3;
 		int numElementsPerSide = atoi(argv[3]);
+		data_folder = argv[4];
 
 		Element element;
 		int k = 0;
@@ -314,11 +317,16 @@ int main(int argc, char** argv)
 	}
 
 	// if you don't want to visualize, output the data
-	while(sys.timeIndex<200)
+	int fileIndex = 0;
+	while(sys.timeIndex<5000)
 	{
 		if(sys.getTimeIndex()%10==0)
 		{
-			sys.writeToFile();
+			stringstream ss;
+			cout << "Frame: " << fileIndex << endl;
+			ss << data_folder << "/" << fileIndex << ".txt";
+			sys.writeToFile(ss.str());
+			fileIndex++;
 		}
 		sys.DoTimeStep();
 	}

@@ -322,7 +322,7 @@ public:
 	int updateInternalForcesARMA();
 	int updatePhiq();
 	int updatePhi();
-	int writeToFile();
+	int writeToFile(string fileName);
 	int saveLHS();
 	int resetLeftHandSideMatrix();
 
