@@ -160,6 +160,8 @@ void CallBackMotionFunc(int x, int y) {
 
 int main(int argc, char** argv)
 {
+	bool visualize = false;
+
 	sys.setTimeStep(1e-2);
 	sys.setTolerance(1e-6);
 	sys.useSpike = atoi(argv[1]);
@@ -293,22 +295,25 @@ int main(int argc, char** argv)
 	sys.initializeSystem();
 	printf("System Initialized (%d beams, %d constraints, %d equations)!\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
 
-	// Uncomment if you want visualization
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowPosition(0,0);
-	glutInitWindowSize(1024	,512);
-	glutCreateWindow("MAIN");
-	glutDisplayFunc(renderSceneAll);
-	glutIdleFunc(renderSceneAll);
-	glutReshapeFunc(changeSize);
-	glutIgnoreKeyRepeat(0);
-	glutKeyboardFunc(CallBackKeyboardFunc);
-	glutMouseFunc(CallBackMouseFunc);
-	glutMotionFunc(CallBackMotionFunc);
-	initScene();
-	glutMainLoop();
+	if(visualize)
+	{
+		glutInit(&argc, argv);
+		glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+		glutInitWindowPosition(0,0);
+		glutInitWindowSize(1024	,512);
+		glutCreateWindow("MAIN");
+		glutDisplayFunc(renderSceneAll);
+		glutIdleFunc(renderSceneAll);
+		glutReshapeFunc(changeSize);
+		glutIgnoreKeyRepeat(0);
+		glutKeyboardFunc(CallBackKeyboardFunc);
+		glutMouseFunc(CallBackMouseFunc);
+		glutMotionFunc(CallBackMotionFunc);
+		initScene();
+		glutMainLoop();
+	}
 
+	// if you don't want to visualize, output the data
 	while(sys.timeIndex<200)
 	{
 		if(sys.getTimeIndex()%10==0)
