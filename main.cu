@@ -209,7 +209,10 @@ int main(int argc, char** argv)
 		double rho = 2200;
 		double nu = .3;
 		int numElementsPerSide = atoi(argv[3]);
-		data_folder = argv[4];
+		sys.preconditionerUpdateModulus = atoi(argv[4]);
+		sys.preconditionerMaxNewtonIterations = atoi(argv[5]);
+		sys.preconditionerMaxKrylovIterations = atoi(argv[6]);
+		data_folder = argv[7];
 
 		Element element;
 		int k = 0;
@@ -294,10 +297,11 @@ int main(int argc, char** argv)
 		}
 	}
 
-	printf("Initializing system (%d beams, %d constraints)... ",sys.elements.size(),sys.constraints.size());
+	//printf("Initializing system (%d beams, %d constraints)... ",sys.elements.size(),sys.constraints.size());
+	printf("%d, %d, %d\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
 	sys.initializeSystem();
-	printf("System Initialized (%d beams, %d constraints, %d equations)!\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
-
+	//printf("System Initialized (%d beams, %d constraints, %d equations)!\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
+	
 	if(visualize)
 	{
 		glutInit(&argc, argv);
@@ -316,6 +320,11 @@ int main(int argc, char** argv)
 		glutMainLoop();
 	}
 
+	stringstream ss_m;
+	ss_m << data_folder << "/" << "timing.txt";
+	string timing_file_name = ss_m.str();
+	ofstream ofile(timing_file_name.c_str());
+	
 	// if you don't want to visualize, output the data
 	int fileIndex = 0;
 	while(sys.timeIndex<5000)
@@ -323,14 +332,16 @@ int main(int argc, char** argv)
 		if(sys.getTimeIndex()%10==0)
 		{
 			stringstream ss;
-			cout << "Frame: " << fileIndex << endl;
+			//cout << "Frame: " << fileIndex << endl;
 			ss << data_folder << "/" << fileIndex << ".txt";
 			sys.writeToFile(ss.str());
 			fileIndex++;
 		}
 		sys.DoTimeStep();
+		ofile << sys.time << ", " << sys.stepTime << ", " << sys.stepNewtonIterations << ", " << sys.stepKrylovIterations << ", " << endl;
 	}
 	printf("Total time to simulate: %f [s]\n",sys.timeToSimulate);
+	ofile.close();
 
 	return 0;
 }

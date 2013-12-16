@@ -73,6 +73,10 @@ struct MaterialParticle {
 class ANCFSystem {
 public:
 
+	double stepTime;
+	int stepNewtonIterations;
+	int stepKrylovIterations;
+
 	// spike stuff
 	int partitions;
 	SpikeSolver* mySolver;

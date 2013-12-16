@@ -712,10 +712,10 @@ int ANCFSystem::DoTimeStep()
 	if(useSpike&&timeIndex%preconditionerUpdateModulus==0)
 	{
 			mySolver->update(lhs.values);
-			printf("Preconditioner updated!\n");
+			//printf("Preconditioner updated!\n");
 	}
 
-	while(norm_d>tol&&it<20)//while(norm_e>tol&&norm_d>tol)
+	while(norm_d>tol&&it<100)//while(norm_e>tol&&norm_d>tol)
 	{
 		it++;
 
@@ -734,6 +734,7 @@ int ANCFSystem::DoTimeStep()
 //		cin.get();
 
 		// SOLVE THE LINEAR SYSTEM
+		stepKrylovIterations = 0;
 		cusp::blas::fill(delta, 0);
 		if(!useSpike)
 		{
@@ -746,6 +747,7 @@ int ANCFSystem::DoTimeStep()
 
 			// solve the linear system A * x = b with the Bi-Conjugate Gradient - Stable method
 			cusp::krylov::cg(lhsStencil, delta, eAll, monitor);//, M);
+			stepKrylovIterations += monitor.iteration_count();
 
 			//cout << "Success: " << monitor.converged() << " Iterations: "
 			//		<< monitor.iteration_count() << " relResidualNorm: "
@@ -761,8 +763,9 @@ int ANCFSystem::DoTimeStep()
 			if(useSpike&&stats.numIterations>preconditionerMaxKrylovIterations)
 			{
 				mySolver->update(lhs.values);
-				printf("Preconditioner updated!\n");
+				//printf("Preconditioner updated!\n");
 			}
+			stepKrylovIterations += stats.numIterations;
 
 			//cout << "Success: " << success << " Iterations: "
 			//		<< stats.numIterations << " relResidualNorm: "
@@ -798,7 +801,7 @@ int ANCFSystem::DoTimeStep()
 	if(useSpike&&it>preconditionerMaxNewtonIterations)
 	{
 		mySolver->update(lhs.values);
-		printf("Preconditioner updated!\n");
+		//printf("Preconditioner updated!\n");
 	}
 
 	cusp::copy(anew,a);
@@ -822,6 +825,10 @@ int ANCFSystem::DoTimeStep()
 	printf("%f, %f, %d, \n",this->getCurrentTime(), elapsedTime, it);
 	//printf("Pos = (%f, %.13f, %f)\n",getXYZPosition(elements.size()-1,1).x,getXYZPosition(elements.size()-1,1).y,getXYZPosition(elements.size()-1,1).z);
 	//printf("%f\n",getXYZPosition(elements.size()-1,1).y);
+	
+	stepTime = elapsedTime;
+	stepNewtonIterations = it;
+	
 
 	time+=h;
 	timeIndex++;
