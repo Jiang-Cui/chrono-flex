@@ -704,6 +704,7 @@ int ANCFSystem::DoTimeStep()
 	int it = 0;
 
 	//ANCFSystem::updateParticleDynamics();
+	stepKrylovIterations = 0;
 
 	// update q and q_dot for initial guess
 	cusp::blas::axpbypcz(p,v,a,pnew,1,h,.5*h*h);
@@ -734,7 +735,7 @@ int ANCFSystem::DoTimeStep()
 //		cin.get();
 
 		// SOLVE THE LINEAR SYSTEM
-		stepKrylovIterations = 0;
+
 		cusp::blas::fill(delta, 0);
 		if(!useSpike)
 		{
