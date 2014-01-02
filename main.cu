@@ -177,7 +177,7 @@ int main(int argc, char** argv)
 		double length = 2;
 		double lengthElement = length/numElements;
 		double r = 0.01;
-		double E = 2e11;
+		double E = 2e7;
 		double rho = 7810;
 		double nu = .3;
 		double P = -60;

@@ -37,6 +37,7 @@ public:
 ANCFSystem::ANCFSystem() {
 
 	tol = 1e-7;
+	maxNewtonIterations = 200;
 
 	// spike stuff
 	//if(useSpike) {
@@ -140,6 +141,11 @@ int ANCFSystem::setTolerance(double tolerance)
 {
 	this->tol = tolerance;
 	solverOptions.tolerance = tolerance*1e-2;
+	return 0;
+}
+int ANCFSystem::setMaxNewtonIterations(int iterations)
+{
+	this->maxNewtonIterations = iterations;
 	return 0;
 }
 int ANCFSystem::getTimeIndex()
@@ -716,7 +722,7 @@ int ANCFSystem::DoTimeStep()
 			//printf("Preconditioner updated!\n");
 	}
 
-	while(norm_d>tol&&it<100)//while(norm_e>tol&&norm_d>tol)
+	while(norm_d>tol&&it<maxNewtonIterations)//while(norm_e>tol&&norm_d>tol)
 	{
 		it++;
 
@@ -742,7 +748,7 @@ int ANCFSystem::DoTimeStep()
 			// SOLVE USING CUSP
 			stencil lhsStencil(anewAll.size(), lhs_mass, lhs_phiq, lhsVec);
 
-			cusp::default_monitor<double> monitor(eAll, 1000, 1e-2*tol);
+			cusp::default_monitor<double> monitor(eAll, 1000000, 1e-2*tol);
 
 			//cusp::precond::diagonal<double, cusp::device_memory> M(lhs);
 
@@ -801,6 +807,7 @@ int ANCFSystem::DoTimeStep()
 
 	if(useSpike&&it>preconditionerMaxNewtonIterations)
 	{
+		ANCFSystem::updateInternalForces();
 		mySolver->update(lhs.values);
 		//printf("Preconditioner updated!\n");
 	}
@@ -823,7 +830,7 @@ int ANCFSystem::DoTimeStep()
 
 	//printf("Time: %f (it = %d, PTA pos = (%f, %.13f, %f)\n",this->getCurrentTime(),it,getXYZPosition(elements.size()-1,1).x,getXYZPosition(elements.size()-1,1).y,getXYZPosition(elements.size()-1,1).z);
 	//printf("Time: %f (Simulation time = %f ms, it = %d)\n",this->getCurrentTime(), elapsedTime,it);
-	printf("%f, %f, %d, \n",this->getCurrentTime(), elapsedTime, it);
+	printf("Time = %f, Elapsed time = %f, Newton = %d, Ave. Krylov Per Newton = %d, Residual = %f,\n",this->getCurrentTime(), elapsedTime, it, stepKrylovIterations/it,norm_d);
 	//printf("Pos = (%f, %.13f, %f)\n",getXYZPosition(elements.size()-1,1).x,getXYZPosition(elements.size()-1,1).y,getXYZPosition(elements.size()-1,1).z);
 	//printf("%f\n",getXYZPosition(elements.size()-1,1).y);
 	

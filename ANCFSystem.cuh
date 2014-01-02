@@ -76,6 +76,7 @@ public:
 	double stepTime;
 	int stepNewtonIterations;
 	int stepKrylovIterations;
+	int maxNewtonIterations;
 
 	// spike stuff
 	int partitions;
@@ -302,6 +303,7 @@ public:
 	int setSimulationTime(double simTime);
 	int setTimeStep(double h);
 	int setTolerance(double tolerance);
+	int setMaxNewtonIterations(int iterations);
 	int setSolverTolerance(double tolerance);
 	int setPartitions(int partitions);
 	int addElement(Element* element);
