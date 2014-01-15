@@ -5,10 +5,39 @@
 
 #include <cusp/io/matrix_market.h>
 
+//// linear operator y = A*x (for CUSP)
+//class stencil: public cusp::linear_operator<double, cusp::device_memory> {
+//public:
+//        typedef cusp::linear_operator<double, cusp::device_memory> super;
+//
+//        int N;
+//        DeviceView massMatrix;
+//        DeviceView phiqMatrix;
+//        DeviceValueArrayView temp;
+//
+//// constructor
+//        stencil(int N, DeviceView lhs_mass, DeviceView lhs_phiq,
+//                        DeviceValueArrayView tempVector) :
+//                        super(N, N), N(N) {
+//                massMatrix = lhs_mass;
+//                phiqMatrix = lhs_phiq;
+//                temp = tempVector;
+//        }
+//
+//// linear operator y = A*x
+//        template<typename VectorType1, typename VectorType2>
+//        void operator()(const VectorType1& x, VectorType2& y) const {
+//// obtain a raw pointer to device memory
+//                cusp::multiply(massMatrix, x, temp);
+//                cusp::multiply(phiqMatrix, x, y);
+//                cusp::blas::axpy(temp, y, 1);
+//        }
+//};
+
 ANCFSystem::ANCFSystem() {
 
 	tol = 1e-7;
-	maxNewtonIterations = 200;
+	maxNewtonIterations = 20;
 
 	// spike stuff
 	partitions = 1;
@@ -648,12 +677,15 @@ int ANCFSystem::initializeSystem() {
 	mySolver = new SpikeSolver(partitions, solverOptions);
 	mySolver->setup(lhs);
 
-	char filename[100];
-	sprintf(filename, "./lhs.txt");
-	cusp::io::write_matrix_market_file(lhs, filename);
+//	char filename[100];
+//	sprintf(filename, "./lhs.txt");
+//	cusp::io::write_matrix_market_file(lhs, filename);
 
 	bool success = mySolver->solve(*m_spmv, eAll, anewAll);
 	spike::Stats stats = mySolver->getStats();
+//	cout << "Success: " << success << " Iterations: "
+//			<< stats.numIterations << " relResidualNorm: "
+//			<< stats.relResidualNorm << endl;
 
 	cusp::copy(anew, a);
 	cusp::copy(v, vnew);
@@ -701,11 +733,12 @@ int ANCFSystem::DoTimeStep() {
 		cusp::blas::copy(phi, eBottom);
 
 		// SOLVE THE LINEAR SYSTEM USING SPIKE
+		cusp::blas::fill(delta, 0); // very important
 		//stencil lhsStencil(anewAll.size(), lhs_mass, lhs_phiq, lhsVec);
-
-		bool success = mySolver->solve(*m_spmv, eAll, delta);
+		bool success = mySolver->solve(/*lhsStencil*/*m_spmv, eAll, delta);
 
 		spike::Stats stats = mySolver->getStats();
+
 		if (preconditionerMaxKrylovIterations && stats.numIterations > preconditionerMaxKrylovIterations) {
 			mySolver->update(lhs.values);
 			printf("Preconditioner updated!\n");

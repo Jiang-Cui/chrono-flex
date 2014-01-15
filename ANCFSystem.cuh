@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 
-typedef float PREC_REAL;
+typedef double PREC_REAL;
 
 // use array1d_view to wrap the individual arrays
 typedef typename cusp::array1d_view<thrust::device_ptr<int> > DeviceIndexArrayView;

@@ -210,8 +210,9 @@ int main(int argc, char** argv)
 		int numElementsPerSide = atoi(argv[2]);
 		sys.setSolverType((int)atoi(argv[3]));
 		sys.useSpike(atoi(argv[4]));
-		if(atoi(argv[4])) sys.preconditionerUpdateModulus = 500;
-		data_folder = argv[5];
+		//if(atoi(argv[4])) sys.preconditionerUpdateModulus = 500;
+		E = atof(argv[5]);
+		data_folder = argv[6];
 
 		Element element;
 		int k = 0;
@@ -298,7 +299,7 @@ int main(int argc, char** argv)
 
 	printf("%d, %d, %d\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
 	sys.initializeSystem();
-	printf("System initialized!");
+	printf("System initialized!\n");
 	
 	if(visualize)
 	{
@@ -319,7 +320,7 @@ int main(int argc, char** argv)
 	}
 
 	stringstream ss_m;
-	ss_m << data_folder << "/" << "timing.txt";
+	ss_m << data_folder << "/" << "timing_" << atoi(argv[1]) << "_" << atoi(argv[2]) << "_" << atoi(argv[3]) << "_" << atoi(argv[4]) << "_" << atof(argv[5]) << ".txt";
 	string timing_file_name = ss_m.str();
 	ofstream ofile(timing_file_name.c_str());
 	
