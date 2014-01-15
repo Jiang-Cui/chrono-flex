@@ -162,57 +162,56 @@ int main(int argc, char** argv)
 {
 	bool visualize = false;
 
-	sys.setTimeStep(1e-3);
-	sys.setTolerance(1e-6);
-	sys.useSpike = atoi(argv[1]);
+	sys.setTimeStep(1e-4);
+	sys.setTolerance(1e-4);
 	sys.numContactPoints = 30;
-	sys.setPartitions(atoi(argv[2]));
+	sys.setPartitions((int)atoi(argv[1]));
 
 	string data_folder;
 
-	if(argc == 3)
-	{
-		sys.setAlpha_HHT(-10);
-		int numElements = 1;
-		double length = 2;
-		double lengthElement = length/numElements;
-		double r = 0.01;
-		double E = 2e7;
-		double rho = 7810;
-		double nu = .3;
-		double P = -60;
-		Element element = Element(Node(0, 0, 0, 1, 0, 0), Node(lengthElement, 0, 0, 1, 0, 0), r, nu, E, rho);
-		sys.addElement(&element);
-		sys.addConstraint_AbsoluteFixed(0);
-		sys.numContactPoints = 10;
-
-		for(int i=1;i<numElements;i++)
-		{
-			element = Element(Node(i*lengthElement, 0, 0, 1, 0, 0), Node((i+1)*lengthElement, 0, 0, 1, 0, 0), r, nu, E, rho);
-			sys.addElement(&element);
-			sys.addConstraint_RelativeFixed(sys.elements[i-1], 1,sys.elements[i], 0);
-		}
-		sys.addForce(&element,1,make_float3(0,P,0));
-
-//		// should get deflection = PL^3/(3EI)
-//		double I = .25*PI*r*r*r*r;
-//		double deflection = P*pow(length,3)/(3*E*I);
-//		cout << deflection << endl;
-//		cin.get();
-	}
-	else
+//	if(argc == 3)
+//	{
+//		sys.setAlpha_HHT(-10);
+//		int numElements = 1;
+//		double length = 2;
+//		double lengthElement = length/numElements;
+//		double r = 0.01;
+//		double E = 2e7;
+//		double rho = 7810;
+//		double nu = .3;
+//		double P = -60;
+//		Element element = Element(Node(0, 0, 0, 1, 0, 0), Node(lengthElement, 0, 0, 1, 0, 0), r, nu, E, rho);
+//		sys.addElement(&element);
+//		sys.addConstraint_AbsoluteFixed(0);
+//		sys.numContactPoints = 10;
+//
+//		for(int i=1;i<numElements;i++)
+//		{
+//			element = Element(Node(i*lengthElement, 0, 0, 1, 0, 0), Node((i+1)*lengthElement, 0, 0, 1, 0, 0), r, nu, E, rho);
+//			sys.addElement(&element);
+//			sys.addConstraint_RelativeFixed(sys.elements[i-1], 1,sys.elements[i], 0);
+//		}
+//		sys.addForce(&element,1,make_float3(0,P,0));
+//
+////		// should get deflection = PL^3/(3EI)
+////		double I = .25*PI*r*r*r*r;
+////		double deflection = P*pow(length,3)/(3*E*I);
+////		cout << deflection << endl;
+////		cin.get();
+//	}
+//	else
 	{
 		sys.fullJacobian = 1;
 		double length = 1;
 		double r = .02;
-		double E = 2e7;
+		double E = 2e11;
 		double rho = 2200;
 		double nu = .3;
-		int numElementsPerSide = atoi(argv[3]);
-		sys.preconditionerUpdateModulus = atoi(argv[4]);
-		sys.preconditionerMaxNewtonIterations = atoi(argv[5]);
-		sys.preconditionerMaxKrylovIterations = atoi(argv[6]);
-		data_folder = argv[7];
+		int numElementsPerSide = atoi(argv[2]);
+		sys.setSolverType((int)atoi(argv[3]));
+		sys.useSpike(atoi(argv[4]));
+		if(atoi(argv[4])) sys.preconditionerUpdateModulus = 500;
+		data_folder = argv[5];
 
 		Element element;
 		int k = 0;
@@ -297,10 +296,9 @@ int main(int argc, char** argv)
 		}
 	}
 
-	//printf("Initializing system (%d beams, %d constraints)... ",sys.elements.size(),sys.constraints.size());
 	printf("%d, %d, %d\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
 	sys.initializeSystem();
-	//printf("System Initialized (%d beams, %d constraints, %d equations)!\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
+	printf("System initialized!");
 	
 	if(visualize)
 	{
@@ -325,11 +323,11 @@ int main(int argc, char** argv)
 	string timing_file_name = ss_m.str();
 	ofstream ofile(timing_file_name.c_str());
 	
-	// if you don't want to visualize, output the data
+	// if you don't want to visualize, then output the data
 	int fileIndex = 0;
-	while(sys.timeIndex<5000)
+	while(sys.timeIndex<50000)
 	{
-		if(sys.getTimeIndex()%10==0)
+		if(sys.getTimeIndex()%100==0)
 		{
 			stringstream ss;
 			//cout << "Frame: " << fileIndex << endl;

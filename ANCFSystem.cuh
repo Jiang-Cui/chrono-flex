@@ -17,6 +17,8 @@
 #include <spike/solver.h>
 #include <spike/spmv.h>
 
+#include <stdio.h>
+
 typedef float PREC_REAL;
 
 // use array1d_view to wrap the individual arrays
@@ -26,15 +28,15 @@ typedef typename cusp::array1d_view<thrust::device_ptr<double> > DeviceValueArra
 //combine the three array1d_views into a coo_matrix_view
 typedef typename cusp::coo_matrix_view<DeviceIndexArrayView, DeviceIndexArrayView, DeviceValueArrayView> DeviceView;
 
-typedef typename spike::Solver<DeviceValueArrayView, PREC_REAL>                 SpikeSolver;
-//typedef typename spike::Solver<DeviceView, DeviceValueArrayView> SpikeSolver;
-//typedef typename spike::SpmvCusp<DeviceView, DeviceValueArrayView> SpmvFunctor;
-typedef typename cusp::array1d<double, cusp::device_memory>         DeviceValueArray;
+typedef typename spike::Solver<DeviceValueArrayView, PREC_REAL> SpikeSolver;
+typedef typename cusp::array1d<double, cusp::device_memory> DeviceValueArray;
 
-class MySpmv {
+class MySpmv : public cusp::linear_operator<double, cusp::device_memory>{
 public:
+	typedef cusp::linear_operator<double, cusp::device_memory> super;
+
 	//MySpmv(DeviceView& lhs_mass, DeviceView& A, DeviceValueArrayView& A) : m_A(A) {}
-	MySpmv(DeviceView& lhs_mass, DeviceView& lhs_phiq, DeviceValueArrayView& temp) : mlhs_mass(lhs_mass), mlhs_phiq(lhs_phiq), mtemp(temp) {}
+	MySpmv(DeviceView& lhs_mass, DeviceView& lhs_phiq, DeviceValueArrayView& temp) : mlhs_mass(lhs_mass), mlhs_phiq(lhs_phiq), mtemp(temp) , super(temp.size(), temp.size()) {}
 
 	void operator()(const DeviceValueArray& v, DeviceValueArray& Av) {
 		cusp::multiply(mlhs_mass, v, mtemp);
@@ -81,18 +83,12 @@ public:
 	// spike stuff
 	int partitions;
 	SpikeSolver* mySolver;
-	//SpmvFunctor* mySpmv;
-	bool useSpike;
 	MySpmv* m_spmv;
 	spike::Options  solverOptions;
 	int preconditionerUpdateModulus;
 	int preconditionerMaxNewtonIterations;
 	int preconditionerMaxKrylovIterations;
 	// end spike stuff
-
-	// cusp stuff
-	//cusp::precond::scaled_bridson_ainv<double, cusp::device_memory>* M;
-	// end cusp stuff
 
 	ofstream posFile;
 	ofstream resultsFile1;
@@ -331,6 +327,8 @@ public:
 	int writeToFile(string fileName);
 	int saveLHS();
 	int resetLeftHandSideMatrix();
+	int setSolverType(int solverType);
+	int useSpike(int useSpike);
 
 //	Node getFirstNode(Element element)
 //	{
