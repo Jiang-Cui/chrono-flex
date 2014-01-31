@@ -160,9 +160,13 @@ void CallBackMotionFunc(int x, int y) {
 
 int main(int argc, char** argv)
 {
+	// command line arguments
+	// ImplicitBeamsGPU <numPartitions> <numBeamsPerSide> <solverType> <usePreconditioning> <elasticModulus> <dataFolder>
+	// solverType: (0) BiCGStab, (1) BiCGStab1, (2) BiCGStab2, (3) MinRes
+
 	bool visualize = false;
 
-	sys.setTimeStep(1e-4);
+	sys.setTimeStep(1e-3);
 	sys.setTolerance(1e-4);
 	sys.numContactPoints = 30;
 	sys.setPartitions((int)atoi(argv[1]));
@@ -210,7 +214,7 @@ int main(int argc, char** argv)
 		int numElementsPerSide = atoi(argv[2]);
 		sys.setSolverType((int)atoi(argv[3]));
 		sys.useSpike(atoi(argv[4]));
-		//if(atoi(argv[4])) sys.preconditionerUpdateModulus = 500;
+		if(atoi(argv[4])) sys.preconditionerUpdateModulus = 500;
 		E = atof(argv[5]);
 		data_folder = argv[6];
 
@@ -326,7 +330,7 @@ int main(int argc, char** argv)
 	
 	// if you don't want to visualize, then output the data
 	int fileIndex = 0;
-	while(sys.timeIndex<50000)
+	while(sys.timeIndex<5000)
 	{
 		if(sys.getTimeIndex()%100==0)
 		{
