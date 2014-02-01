@@ -88,6 +88,9 @@ public:
 	int preconditionerUpdateModulus;
 	int preconditionerMaxNewtonIterations;
 	int preconditionerMaxKrylovIterations;
+
+	vector<float> spikeSolveTime;
+	vector<float> spikeNumIter;
 	// end spike stuff
 
 	ofstream posFile;

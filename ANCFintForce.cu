@@ -464,6 +464,7 @@ int ANCFSystem::resetLeftHandSideMatrix()
 	// populate the lhs with only the mass, must be done before updating internal forces!
 	thrust::fill_n(lhs_d.begin(),elements.size()*12*12,0.0); //Clear the matrix
 	addMass<<<dimGridElement,dimBlockElement>>>(CASTD1(lhs_d),CASTM1(materials_d),elements.size()); // add terms from mass
+	return 0;
 }
 
 int ANCFSystem::updateInternalForces()

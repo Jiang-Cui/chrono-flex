@@ -43,7 +43,8 @@ ANCFSystem::ANCFSystem() {
 	partitions = 1;
 	solverOptions.safeFactorization = true;
 	solverOptions.trackReordering = true;
-	solverOptions.tolerance = 1e-2 * tol;
+	solverOptions.relTol = 1e-2 * tol;
+	solverOptions.absTol = 1e-10;
 	solverOptions.maxNumIterations = 10000;
 	solverOptions.precondType = spike::None;
 	//solverOptions.solverType = spike::CG;
@@ -165,7 +166,7 @@ int ANCFSystem::setTimeStep(double h) {
 }
 int ANCFSystem::setTolerance(double tolerance) {
 	this->tol = tolerance;
-	solverOptions.tolerance = tolerance * 1e-2;
+	setSolverTolerance(tolerance * 1e-2);
 	return 0;
 }
 int ANCFSystem::setMaxNewtonIterations(int iterations) {
@@ -176,7 +177,8 @@ int ANCFSystem::getTimeIndex() {
 	return this->timeIndex;
 }
 int ANCFSystem::setSolverTolerance(double tolerance) {
-	solverOptions.tolerance = tolerance;
+	solverOptions.relTol = tolerance;
+	solverOptions.absTol = 1e-10;
 	return 0;
 }
 int ANCFSystem::setPartitions(int partitions) {
@@ -681,7 +683,7 @@ int ANCFSystem::initializeSystem() {
 //	char filename[100];
 //	sprintf(filename, "./lhs.txt");
 //	cusp::io::write_matrix_market_file(lhs, filename);
-
+	cusp::blas::fill(anewAll, 0);
 	bool success = mySolver->solve(*m_spmv, eAll, anewAll);
 	spike::Stats stats = mySolver->getStats();
 //	cout << "Success: " << success << " Iterations: "
@@ -691,6 +693,12 @@ int ANCFSystem::initializeSystem() {
 	cusp::copy(anew, a);
 	cusp::copy(v, vnew);
 	cusp::copy(p, pnew);
+
+
+	// Vectors for Spike solver stats
+	spikeSolveTime.resize(maxNewtonIterations);
+	spikeNumIter.resize(maxNewtonIterations);
+
 
 	//ANCFSystem::updateParticleDynamics();
 
@@ -754,15 +762,21 @@ int ANCFSystem::DoTimeStep() {
 				char filename1[100];
 				sprintf(filename1, "./data/rhs%d.txt",timeIndex);
 				cusp::io::write_matrix_market_file(eAll, filename1);
+
+				std::cout << "STOP" << std::endl;
+				exit(0);
 		}
 
 		cudaEventRecord(stop2, 0);
 		cudaEventSynchronize(stop2);
 		float elapsedTime2;
 		cudaEventElapsedTime(&elapsedTime2, start2, stop2);
-		printf("Time in solver: %f ms\n",elapsedTime2);
 
 		spike::Stats stats = mySolver->getStats();
+		spikeSolveTime[it-1] = stats.timeSolve;
+		spikeNumIter[it-1] = stats.numIterations;
+
+		printf("Time in solver: %f ms    Num. iterations: %.2f\n", stats.timeSolve, stats.numIterations);
 
 		if (preconditionerMaxKrylovIterations && (stats.numIterations > preconditionerMaxKrylovIterations)) {
 			mySolver->update(lhs.values);

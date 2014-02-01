@@ -341,7 +341,10 @@ int main(int argc, char** argv)
 			fileIndex++;
 		}
 		sys.DoTimeStep();
-		ofile << sys.time << ", " << sys.stepTime << ", " << sys.stepNewtonIterations << ", " << sys.stepKrylovIterations << ", " << endl;
+		ofile << sys.time << ", " << sys.stepTime << ", " << sys.stepNewtonIterations << ", " << sys.stepKrylovIterations << ",     ";
+		for (size_t i = 0; i < sys.stepNewtonIterations; ++i)
+			ofile << sys.spikeSolveTime[i] << ", " << sys.spikeNumIter[i] << ",     ";
+		ofile << endl;
 	}
 	printf("Total time to simulate: %f [s]\n",sys.timeToSimulate);
 	ofile.close();
