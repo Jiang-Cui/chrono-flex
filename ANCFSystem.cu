@@ -34,17 +34,18 @@
 //        }
 //};
 
-ANCFSystem::ANCFSystem() {
-
-	tol = 1e-7;
+ANCFSystem::ANCFSystem()
+{
 	maxNewtonIterations = 20;
+
+	// Set default tolerance for Newton iteration
+	// (note that this also sets the rel and abs tolerances for Spike)
+	setTolerance(1e-7);
 
 	// spike stuff
 	partitions = 1;
 	solverOptions.safeFactorization = true;
 	solverOptions.trackReordering = true;
-	solverOptions.relTol = 1e-2 * tol;
-	solverOptions.absTol = 1e-10;
 	solverOptions.maxNumIterations = 10000;
 	solverOptions.precondType = spike::None;
 	//solverOptions.solverType = spike::CG;
@@ -751,20 +752,34 @@ int ANCFSystem::DoTimeStep() {
 		cudaEventRecord(start2, 0);
 
 		bool success = mySolver->solve(*m_spmv, eAll, delta);
+		spike::Stats stats = mySolver->getStats();
 
 		if(!success) {
-				isHealthy = 0;
+			isHealthy = 0;
 
-				char filename[100];
-				sprintf(filename, "./data/lhs%d.txt",timeIndex);
-				cusp::io::write_matrix_market_file(lhs, filename);
+			char filename[100];
+			
+			sprintf(filename, "./data/lhs%d.mtx", timeIndex);
+			cusp::io::write_matrix_market_file(lhs, filename);
 
-				char filename1[100];
-				sprintf(filename1, "./data/rhs%d.txt",timeIndex);
-				cusp::io::write_matrix_market_file(eAll, filename1);
+			sprintf(filename, "./data/rhs%d.mtx", timeIndex);
+			cusp::io::write_matrix_market_file(eAll, filename);
 
+			sprintf(filename, "./data/stats%d.txt", timeIndex);
+			ofstream file(filename);
+			file << "Code: " << mySolver->getMonitorCode();
+			file << "  " << mySolver->getMonitorMessage() << std::endl;
+			file << "Number of iterations = " << stats.numIterations << std::endl;
+			file << "RHS norm             = " << stats.rhsNorm << std::endl;
+			file << "Residual norm        = " << stats.residualNorm << std::endl;
+			file << "Rel. residual norm   = " << stats.relResidualNorm << std::endl;
+			file.close();
+
+			int code = mySolver->getMonitorCode();
+			if (code == -1 || code == -2) {
 				std::cout << "STOP" << std::endl;
 				exit(0);
+			}
 		}
 
 		cudaEventRecord(stop2, 0);
@@ -772,7 +787,6 @@ int ANCFSystem::DoTimeStep() {
 		float elapsedTime2;
 		cudaEventElapsedTime(&elapsedTime2, start2, stop2);
 
-		spike::Stats stats = mySolver->getStats();
 		spikeSolveTime[it-1] = stats.timeSolve;
 		spikeNumIter[it-1] = stats.numIterations;
 
