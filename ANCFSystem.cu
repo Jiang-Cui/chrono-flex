@@ -57,7 +57,6 @@ ANCFSystem::ANCFSystem()
 	preconditionerMaxKrylovIterations = 0; // the preconditioner updates if Krylov iterations are greater than ____ iterations
 	// end spike stuff
 
-	isHealthy = 1;
 	this->timeIndex = 0;
 	this->time = 0;
 	this->h = 0.001;
@@ -728,7 +727,7 @@ int ANCFSystem::DoTimeStep() {
 		printf("Preconditioner updated!\n");
 	}
 
-	while (norm_d > tol && it < maxNewtonIterations && isHealthy) //while(norm_e>tol&&norm_d>tol)
+	while (norm_d > tol && it < maxNewtonIterations) //while(norm_e>tol&&norm_d>tol)
 	{
 		it++;
 
@@ -755,7 +754,7 @@ int ANCFSystem::DoTimeStep() {
 		spike::Stats stats = mySolver->getStats();
 
 		if(!success) {
-			isHealthy = 0;
+			std::cout << "**********  DUMP DATA **************" << std::endl;
 
 			char filename[100];
 			
@@ -777,6 +776,9 @@ int ANCFSystem::DoTimeStep() {
 
 			int code = mySolver->getMonitorCode();
 			if (code == -1 || code == -2) {
+
+				//// TODO:  clean this up...
+
 				std::cout << "STOP" << std::endl;
 				exit(0);
 			}

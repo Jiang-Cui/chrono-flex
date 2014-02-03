@@ -74,7 +74,6 @@ struct MaterialParticle {
 
 class ANCFSystem {
 public:
-	int isHealthy;
 	double stepTime;
 	int stepNewtonIterations;
 	int stepKrylovIterations;
