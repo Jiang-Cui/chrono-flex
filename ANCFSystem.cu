@@ -116,7 +116,7 @@ void ANCFSystem::setSolverType(int solverType)
 	}
 }
 
-void ANCFSystem::useSpike(int useSpike)
+void ANCFSystem::setPrecondType(int useSpike)
 {
 	solverOptions.precondType = useSpike ? spike::Spike : spike::None;
 }
@@ -134,13 +134,25 @@ void ANCFSystem::setTimeStep(double step_size,
 	h = step_size;
 
 	// Set tolerance for Newton iteration based on the precision in positions
-	// and integration step-size.  Use a safety factor of 0.5
-	tol = 0.5 * precision / (h * h);
+	// and integration step-size.
+	double safety = 1;////0.5;
+	tol = safety * precision / (h * h);
 
 	// Set the tolerances for Krylov
 	solverOptions.relTol = std::min(0.01 * tol, 1e-6);
 	solverOptions.absTol = 1e-10;
 }
+
+void ANCFSystem::printSolverParams()
+{
+	printf("Step size: %e\n", h);
+	printf("Newton tolerance: %e\n", tol);
+	printf("Max. Newton iterations: %d\n", maxNewtonIterations);
+	printf("Krylov relTol: %e  abdTol: %e\n", solverOptions.relTol, solverOptions.absTol);
+	printf("Max. Krylov iterations: %d\n", solverOptions.maxNumIterations);
+	printf("----------------------------\n");
+}
+
 
 int ANCFSystem::addParticle(Particle* particle) {
 	//add the element
@@ -701,7 +713,7 @@ int ANCFSystem::DoTimeStep() {
 		spike::Stats stats = mySolver->getStats();
 
 		if(!success) {
-			std::cout << "**********  DUMP DATA **************" << std::endl;
+			printf("**********  DUMP DATA **************\n");
 
 			char filename[100];
 			

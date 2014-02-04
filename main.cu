@@ -172,6 +172,11 @@ int main(int argc, char** argv)
 	sys.setNumPartitions((int)atoi(argv[1]));
 	sys.numContactPoints = 30;
 
+
+	double t_end = 5.0;
+	int    precUpdateInterval = 500;
+	int    outputInterval = 100;
+
 	string data_folder;
 
 //	if(argc == 3)
@@ -214,8 +219,8 @@ int main(int argc, char** argv)
 		double nu = .3;
 		int numElementsPerSide = atoi(argv[2]);
 		sys.setSolverType((int)atoi(argv[3]));
-		sys.useSpike(atoi(argv[4]));
-		if(atoi(argv[4])) sys.preconditionerUpdateModulus = 500;
+		sys.setPrecondType(atoi(argv[4]));
+		if(atoi(argv[4])) sys.preconditionerUpdateModulus = precUpdateInterval;
 		E = atof(argv[5]);
 		data_folder = argv[6];
 
@@ -305,6 +310,7 @@ int main(int argc, char** argv)
 	printf("%d, %d, %d\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
 	sys.initializeSystem();
 	printf("System initialized!\n");
+	sys.printSolverParams();
 	
 	if(visualize)
 	{
@@ -331,9 +337,9 @@ int main(int argc, char** argv)
 	
 	// if you don't want to visualize, then output the data
 	int fileIndex = 0;
-	while(sys.timeIndex<5000)
+	while(sys.time < t_end)
 	{
-		if(sys.getTimeIndex()%100==0)
+		if(sys.getTimeIndex()%outputInterval==0)
 		{
 			stringstream ss;
 			//cout << "Frame: " << fileIndex << endl;

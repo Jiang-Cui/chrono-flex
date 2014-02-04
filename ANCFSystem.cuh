@@ -308,8 +308,9 @@ public:
 	void setMaxKrylovIterations(int max_it)   {solverOptions.maxNumIterations = max_it;}
 
 	void setSolverType(int solverType);
-	void useSpike(int useSpike);
+	void setPrecondType(int useSpike);
 
+	void printSolverParams();
 
 	int addElement(Element* element);
 	int addParticle(Particle* particle);
