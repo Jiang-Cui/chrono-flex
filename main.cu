@@ -166,10 +166,11 @@ int main(int argc, char** argv)
 
 	bool visualize = false;
 
-	sys.setTimeStep(1e-3);
-	sys.setTolerance(1e-4);
+	sys.setTimeStep(1e-3, 1e-10);
+	sys.setMaxNewtonIterations(20);
+	sys.setMaxKrylovIterations(5000);
+	sys.setNumPartitions((int)atoi(argv[1]));
 	sys.numContactPoints = 30;
-	sys.setPartitions((int)atoi(argv[1]));
 
 	string data_folder;
 

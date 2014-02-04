@@ -76,7 +76,7 @@ class ANCFSystem {
 public:
 	double stepTime;
 	int stepNewtonIterations;
-	int stepKrylovIterations;
+	float stepKrylovIterations;
 	int maxNewtonIterations;
 
 	// spike stuff
@@ -292,18 +292,25 @@ public:
 	int fileIndex;
 	double timeToSimulate;
 
-	double getCurrentTime();
-	double getSimulationTime();
-	double getTimeStep();
-	double getTolerance();
-	int getTimeIndex();
-	int setAlpha_HHT(double alpha);
-	int setSimulationTime(double simTime);
-	int setTimeStep(double h);
-	int setTolerance(double tolerance);
-	int setMaxNewtonIterations(int iterations);
-	int setSolverTolerance(double tolerance);
-	int setPartitions(int partitions);
+	double getCurrentTime() const    {return time;}
+	double getSimulationTime() const {return simTime;}
+	double getTimeStep() const       {return h;}
+	double getTolerance() const      {return tol;}
+	int    getTimeIndex() const      {return timeIndex;}
+
+	void setAlpha_HHT(double alpha);
+	void setTimeStep(double step_size,
+	                 double precision = 1e-10);
+
+	void setSimulationTime(double sim_time)   {simTime = sim_time;}
+	void setNumPartitions(int num_partitions) {partitions = num_partitions;}
+	void setMaxNewtonIterations(int max_it)   {maxNewtonIterations = max_it;}
+	void setMaxKrylovIterations(int max_it)   {solverOptions.maxNumIterations = max_it;}
+
+	void setSolverType(int solverType);
+	void useSpike(int useSpike);
+
+
 	int addElement(Element* element);
 	int addParticle(Particle* particle);
 	int updateParticleDynamics();
@@ -329,8 +336,6 @@ public:
 	int writeToFile(string fileName);
 	int saveLHS();
 	int resetLeftHandSideMatrix();
-	int setSolverType(int solverType);
-	int useSpike(int useSpike);
 
 //	Node getFirstNode(Element element)
 //	{

@@ -36,20 +36,16 @@
 
 ANCFSystem::ANCFSystem()
 {
+	// Set default solver parameters
+	setAlpha_HHT(-0.1);
+	setTimeStep(1e-3);
 	maxNewtonIterations = 20;
-
-	// Set default tolerance for Newton iteration
-	// (note that this also sets the rel and abs tolerances for Spike)
-	setTolerance(1e-7);
 
 	// spike stuff
 	partitions = 1;
 	solverOptions.safeFactorization = true;
 	solverOptions.trackReordering = true;
-	solverOptions.maxNumIterations = 10000;
-	solverOptions.precondType = spike::None;
-	//solverOptions.solverType = spike::CG;
-	//solverOptions.isSPD = true;
+	solverOptions.maxNumIterations = 5000;
 	//mySpmv = new SpmvFunctor(lhs);
 	// m_spmv = new MySpmv(lhs_mass, lhs_phiq, lhsVec);
 	preconditionerUpdateModulus = 0; // the preconditioner updates every ___ time steps
@@ -59,10 +55,6 @@ ANCFSystem::ANCFSystem()
 
 	this->timeIndex = 0;
 	this->time = 0;
-	this->h = 0.001;
-	alphaHHT = -.1;
-	betaHHT = (1 - alphaHHT) * (1 - alphaHHT) * .25;
-	gammaHHT = 0.5 - alphaHHT;
 	timeToSimulate = 0;
 	simTime = 0;
 	fullJacobian = 1;
@@ -105,7 +97,8 @@ ANCFSystem::ANCFSystem()
 	sprintf(filename3, "reactions.dat");
 	resultsFile3.open(filename3);
 }
-int ANCFSystem::setSolverType(int solverType)
+
+void ANCFSystem::setSolverType(int solverType)
 {
 	switch(solverType) {
 	case 0:
@@ -121,69 +114,32 @@ int ANCFSystem::setSolverType(int solverType)
 		solverOptions.solverType = spike::MINRES;
 		break;
 	}
-	return 0;
 }
-int ANCFSystem::useSpike(int useSpike)
+
+void ANCFSystem::useSpike(int useSpike)
 {
-	if(useSpike)
-	{
-		solverOptions.precondType = spike::Spike;
-	}
-	else
-	{
-		solverOptions.precondType = spike::None;
-	}
-
-	return 0;
+	solverOptions.precondType = useSpike ? spike::Spike : spike::None;
 }
 
-double ANCFSystem::getCurrentTime() {
-	return time;
-}
-double ANCFSystem::getSimulationTime() {
-	return simTime;
-}
-double ANCFSystem::getTimeStep() {
-	return h;
-}
-double ANCFSystem::getTolerance() {
-	return tol;
-}
-int ANCFSystem::setAlpha_HHT(double alpha) {
+void ANCFSystem::setAlpha_HHT(double alpha) {
 	// should be greater than -.3, usually set to -.1
 	alphaHHT = alpha;
 	betaHHT = (1 - alphaHHT) * (1 - alphaHHT) * .25;
 	gammaHHT = 0.5 - alphaHHT;
-	return 0;
 }
-int ANCFSystem::setSimulationTime(double simTime) {
-	this->simTime = simTime;
-	return 0;
-}
-int ANCFSystem::setTimeStep(double h) {
-	this->h = h;
-	return 0;
-}
-int ANCFSystem::setTolerance(double tolerance) {
-	this->tol = tolerance;
-	setSolverTolerance(tolerance * 1e-2);
-	return 0;
-}
-int ANCFSystem::setMaxNewtonIterations(int iterations) {
-	this->maxNewtonIterations = iterations;
-	return 0;
-}
-int ANCFSystem::getTimeIndex() {
-	return this->timeIndex;
-}
-int ANCFSystem::setSolverTolerance(double tolerance) {
-	solverOptions.relTol = tolerance;
+
+void ANCFSystem::setTimeStep(double step_size,
+                             double precision)
+{
+	h = step_size;
+
+	// Set tolerance for Newton iteration based on the precision in positions
+	// and integration step-size.  Use a safety factor of 0.5
+	tol = 0.5 * precision / (h * h);
+
+	// Set the tolerances for Krylov
+	solverOptions.relTol = std::min(0.01 * tol, 1e-6);
 	solverOptions.absTol = 1e-10;
-	return 0;
-}
-int ANCFSystem::setPartitions(int partitions) {
-	this->partitions = partitions;
-	return 0;
 }
 
 int ANCFSystem::addParticle(Particle* particle) {
@@ -711,10 +667,6 @@ int ANCFSystem::DoTimeStep() {
 	cudaEventCreate(&stop);
 	cudaEventRecord(start, 0);
 
-	double norm_d = 1;
-	double norm_d_0 = 1;
-	int it = 0;
-
 	//ANCFSystem::updateParticleDynamics();
 	stepKrylovIterations = 0;
 
@@ -722,15 +674,15 @@ int ANCFSystem::DoTimeStep() {
 	cusp::blas::axpbypcz(p, v, a, pnew, 1, h, .5 * h * h);
 	cusp::blas::axpby(v, a, vnew, 1, h);
 
+	// Force a preconditioner update if needed
 	if (preconditionerUpdateModulus && (timeIndex % preconditionerUpdateModulus == 0)) {
 		mySolver->update(lhs.values);
 		printf("Preconditioner updated!\n");
 	}
 
-	while (norm_d > tol && it < maxNewtonIterations) //while(norm_e>tol&&norm_d>tol)
-	{
-		it++;
-
+	// Perform Newton iterations
+	int it;
+	for (it = 0; it < maxNewtonIterations; it++) {
 		ANCFSystem::updatePhi();
 		cusp::multiply(phiq, lambda, phiqlam);
 		ANCFSystem::resetLeftHandSideMatrix();
@@ -744,11 +696,6 @@ int ANCFSystem::DoTimeStep() {
 		// SOLVE THE LINEAR SYSTEM USING SPIKE
 		cusp::blas::fill(delta, 0); // very important
 		//stencil lhsStencil(anewAll.size(), lhs_mass, lhs_phiq, lhsVec);
-
-		cudaEvent_t start2, stop2;
-		cudaEventCreate(&start2);
-		cudaEventCreate(&stop2);
-		cudaEventRecord(start2, 0);
 
 		bool success = mySolver->solve(*m_spmv, eAll, delta);
 		spike::Stats stats = mySolver->getStats();
@@ -784,45 +731,38 @@ int ANCFSystem::DoTimeStep() {
 			}
 		}
 
-		cudaEventRecord(stop2, 0);
-		cudaEventSynchronize(stop2);
-		float elapsedTime2;
-		cudaEventElapsedTime(&elapsedTime2, start2, stop2);
-
-		spikeSolveTime[it-1] = stats.timeSolve;
-		spikeNumIter[it-1] = stats.numIterations;
-
-		printf("Time in solver: %f ms    Num. iterations: %.2f\n", stats.timeSolve, stats.numIterations);
 
 		if (preconditionerMaxKrylovIterations && (stats.numIterations > preconditionerMaxKrylovIterations)) {
 			mySolver->update(lhs.values);
 			printf("Preconditioner updated!\n");
 		}
-		stepKrylovIterations += stats.numIterations;
 
-		//cout << "Success: " << success << " Iterations: "
-		//		<< stats.numIterations << " relResidualNorm: "
-		//		<< stats.relResidualNorm << " norm_d: ";
-		//}
+		spikeSolveTime[it] = stats.timeSolve;
+		spikeNumIter[it] = stats.numIterations;
+		stepKrylovIterations += stats.numIterations;
 		// END SOLVE THE LINEAR SYSTEM
 
 		// update anew
 		cusp::blas::axpy(delta, anewAll, -1);
 
 		// update vnew
-		cusp::blas::axpbypcz(v, a, anew, vnew, 1, h * (1 - gammaHHT),
-				h * gammaHHT);
+		cusp::blas::axpbypcz(v, a, anew, vnew, 1, h * (1 - gammaHHT), h * gammaHHT);
 
 		// update pnew
 		cusp::blas::axpbypcz(v, a, anew, pnew, h, h * h * .5 * (1 - 2 * betaHHT), h * h * .5 * 2 * betaHHT);
 		cusp::blas::axpy(p, pnew, 1);
 
-		// get norms
-		if (it == 1) norm_d_0 = cusp::blas::nrm2(delta);
-		norm_d = cusp::blas::nrm2(delta) / norm_d_0;
+		// Calculate infinity norm of the correction and check for convergence
+		double delta_nrm = cusp::blas::nrmmax(delta);
+
+		printf("         Krylov solver: %8.2f ms    %.2f iterations     ||delta||_inf = %e\n",
+			stats.timeSolve, stats.numIterations, delta_nrm);
+
+		if (delta_nrm <= tol)
+			break;
 	}
 
-	if (preconditionerMaxNewtonIterations && (it > preconditionerMaxNewtonIterations)) {
+	if (preconditionerMaxNewtonIterations && (it == preconditionerMaxNewtonIterations)) {
 		ANCFSystem::updateInternalForces();
 		mySolver->update(lhs.values);
 		printf("Preconditioner updated!\n");
@@ -837,6 +777,8 @@ int ANCFSystem::DoTimeStep() {
 	float elapsedTime;
 	cudaEventElapsedTime(&elapsedTime, start, stop);
 
+	stepNewtonIterations = it + 1;
+	stepTime = elapsedTime;
 	timeToSimulate += elapsedTime / 1000.0;
 
 	p_h = p_d;
@@ -849,17 +791,12 @@ int ANCFSystem::DoTimeStep() {
 //	sprintf(filename1, "./data/rhs%d.txt",timeIndex);
 //	cusp::io::write_matrix_market_file(eAll, filename1);
 
-	printf(
-			"Time = %f, Elapsed time = %f, Newton = %d, Ave. Krylov Per Newton = %d, Residual = %f,\n",
-			this->getCurrentTime(), elapsedTime, it, stepKrylovIterations / it,
-			norm_d);
-
-	stepTime = elapsedTime;
-	stepNewtonIterations = it;
-
 	time += h;
 	timeIndex++;
 
+
+	printf("%f, Elapsed time = %8.2f ms, Newton = %2d, Ave. Krylov Per Newton = %.2f\n",
+	       time, elapsedTime, stepNewtonIterations, stepKrylovIterations / stepNewtonIterations);
 
 
 	return 0;
