@@ -174,7 +174,8 @@ int main(int argc, char** argv)
 
 
 	double t_end = 5.0;
-	int    precUpdateInterval = 500;
+	int    precUpdateInterval = -1;
+	float  precMaxKrylov = -1;
 	int    outputInterval = 100;
 
 	string data_folder;
@@ -220,7 +221,10 @@ int main(int argc, char** argv)
 		int numElementsPerSide = atoi(argv[2]);
 		sys.setSolverType((int)atoi(argv[3]));
 		sys.setPrecondType(atoi(argv[4]));
-		if(atoi(argv[4])) sys.preconditionerUpdateModulus = precUpdateInterval;
+		if(atoi(argv[4])) {
+			sys.preconditionerUpdateModulus = precUpdateInterval;
+			sys.preconditionerMaxKrylovIterations = precMaxKrylov;
+		}
 		E = atof(argv[5]);
 		data_folder = argv[6];
 
@@ -348,7 +352,11 @@ int main(int argc, char** argv)
 			fileIndex++;
 		}
 		sys.DoTimeStep();
-		ofile << sys.time << ", " << sys.stepTime << ", " << sys.stepNewtonIterations << ", " << sys.stepKrylovIterations << ",     ";
+		ofile << sys.time                 << ", "
+		      << sys.stepTime             << ", "
+		      << sys.stepNewtonIterations << ", "
+		      << sys.stepKrylovIterations << ", "
+		      << sys.precUpdated          << " ,     ";
 		for (size_t i = 0; i < sys.stepNewtonIterations; ++i)
 			ofile << sys.spikeSolveTime[i] << ", " << sys.spikeNumIter[i] << ",     ";
 		ofile << endl;

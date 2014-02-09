@@ -85,11 +85,12 @@ public:
 	MySpmv* m_spmv;
 	spike::Options  solverOptions;
 	int preconditionerUpdateModulus;
-	int preconditionerMaxNewtonIterations;
-	int preconditionerMaxKrylovIterations;
+	float preconditionerMaxKrylovIterations;
 
 	vector<float> spikeSolveTime;
 	vector<float> spikeNumIter;
+
+	bool  precUpdated;
 	// end spike stuff
 
 	ofstream posFile;

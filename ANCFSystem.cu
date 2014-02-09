@@ -48,9 +48,8 @@ ANCFSystem::ANCFSystem()
 	solverOptions.maxNumIterations = 5000;
 	//mySpmv = new SpmvFunctor(lhs);
 	// m_spmv = new MySpmv(lhs_mass, lhs_phiq, lhsVec);
-	preconditionerUpdateModulus = 0; // the preconditioner updates every ___ time steps
-	preconditionerMaxNewtonIterations = 0; // the preconditioner updates if Newton iterations are greater than ____ iterations
-	preconditionerMaxKrylovIterations = 0; // the preconditioner updates if Krylov iterations are greater than ____ iterations
+	preconditionerUpdateModulus = -1; // the preconditioner updates every ___ time steps
+	preconditionerMaxKrylovIterations = -1; // the preconditioner updates if Krylov iterations are greater than ____ iterations
 	// end spike stuff
 
 	this->timeIndex = 0;
@@ -681,15 +680,17 @@ int ANCFSystem::DoTimeStep() {
 
 	//ANCFSystem::updateParticleDynamics();
 	stepKrylovIterations = 0;
+	precUpdated = false;
 
 	// update q and q_dot for initial guess
 	cusp::blas::axpbypcz(p, v, a, pnew, 1, h, .5 * h * h);
 	cusp::blas::axpby(v, a, vnew, 1, h);
 
 	// Force a preconditioner update if needed
-	if (preconditionerUpdateModulus && (timeIndex % preconditionerUpdateModulus == 0)) {
+	if ((preconditionerUpdateModulus > 0) && (timeIndex % preconditionerUpdateModulus == 0)) {
 		mySolver->update(lhs.values);
-		printf("Preconditioner updated!\n");
+		precUpdated = true;
+		printf("Preconditioner updated (step condition)!\n");
 	}
 
 	// Perform Newton iterations
@@ -743,12 +744,6 @@ int ANCFSystem::DoTimeStep() {
 			}
 		}
 
-
-		if (preconditionerMaxKrylovIterations && (stats.numIterations > preconditionerMaxKrylovIterations)) {
-			mySolver->update(lhs.values);
-			printf("Preconditioner updated!\n");
-		}
-
 		spikeSolveTime[it] = stats.timeSolve;
 		spikeNumIter[it] = stats.numIterations;
 		stepKrylovIterations += stats.numIterations;
@@ -774,10 +769,17 @@ int ANCFSystem::DoTimeStep() {
 			break;
 	}
 
-	if (preconditionerMaxNewtonIterations && (it == preconditionerMaxNewtonIterations)) {
+	// Number of Newton iterations and average number of Krylov iterations
+	stepNewtonIterations = it + 1;
+	float avgKrylov = stepKrylovIterations / stepNewtonIterations;
+
+	// If the average number of Krylov iterations per Newton iteration exceeds the specified limit,
+	// force a preconditioner update.
+	if ((preconditionerMaxKrylovIterations > 0) && (avgKrylov > preconditionerMaxKrylovIterations)) {
 		ANCFSystem::updateInternalForces();
 		mySolver->update(lhs.values);
-		printf("Preconditioner updated!\n");
+		precUpdated = true;
+		printf("Preconditioner updated! (krylov condition)\n");
 	}
 
 	cusp::copy(anew, a);
@@ -789,7 +791,6 @@ int ANCFSystem::DoTimeStep() {
 	float elapsedTime;
 	cudaEventElapsedTime(&elapsedTime, start, stop);
 
-	stepNewtonIterations = it + 1;
 	stepTime = elapsedTime;
 	timeToSimulate += elapsedTime / 1000.0;
 
@@ -808,7 +809,7 @@ int ANCFSystem::DoTimeStep() {
 
 
 	printf("%f, Elapsed time = %8.2f ms, Newton = %2d, Ave. Krylov Per Newton = %.2f\n",
-	       time, elapsedTime, stepNewtonIterations, stepKrylovIterations / stepNewtonIterations);
+	       time, elapsedTime, stepNewtonIterations, avgKrylov);
 
 
 	return 0;
