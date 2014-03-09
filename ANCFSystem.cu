@@ -657,6 +657,14 @@ int ANCFSystem::initializeSystem() {
 //			<< stats.numIterations << " relResidualNorm: "
 //			<< stats.relResidualNorm << endl;
 
+	cout << endl
+	     << "Linear problem size:  " << eAll.size() << endl
+	     << "Number partitions:    " << stats.numPartitions << endl
+	     << "Bandwidth after MC64: " << stats.bandwidthMC64 << endl
+	     << "Bandwidth after RCM:  " << stats.bandwidthReorder << endl
+	     << "Bandwidth final:      " << stats.bandwidth << endl
+	     << "nuKf factor:          " << stats.nuKf << endl << endl;
+
 	cusp::copy(anew, a);
 	cusp::copy(v, vnew);
 	cusp::copy(p, pnew);
