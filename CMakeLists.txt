@@ -1,11 +1,15 @@
+#=============================================================================
+# CMake configuration file for ImplicitBeamsGPU
+#=============================================================================
+
 # Minimum version of CMake required. Don't touch.
-cmake_minimum_required(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
 # Set the name of your project
-project(ImplicitBeamsGPU)
+PROJECT(ImplicitBeamsGPU)
 
 # Include macros from the SBEL utils library
-include(SBELUtils.cmake)
+INCLUDE(SBELUtils.cmake)
 
 ##########################################################
 # If using Makefiles, be sure to set CMAKE_BUILD_TYPE to # 
@@ -18,43 +22,44 @@ include(SBELUtils.cmake)
 # - [not set] - unoptimized                              #
 ##########################################################
 
-# include CUSP
+# ----------------------------------------------------------------------------
+# Require CUSP (headers-only library)
+
 SET(CUSP_INC_DIR "" CACHE PATH "Where is the CUSP include directory?")
-include_directories(${CUSP_INC_DIR})
+INCLUDE_DIRECTORIES(${CUSP_INC_DIR})
 
-# include SPIKE
+# ----------------------------------------------------------------------------
+# Require SPIKE (headers-only library)
+
 SET(SPIKE_INC_DIR "" CACHE PATH "Where is the SPIKE include directory?")
-include_directories(${SPIKE_INC_DIR})
+INCLUDE_DIRECTORIES(${SPIKE_INC_DIR})
 
-## include SSCD
-#SET(SSCD_INC_DIR "" CACHE PATH "Where is the SSCD include directory?")
-#include_directories(${SSCD_INC_DIR})
-#SET(SSCD_LIB_PATH       ""   CACHE PATH "Where is SSCD located")		 
-#FIND_LIBRARY( SSCD_LIB NAMES sscd PATHS ${SSCD_LIB_PATH})
+# ----------------------------------------------------------------------------
+# Require OpenMP (?)
 
-## Example MPI program
-#enable_mpi_support()
-#add_executable(integrate_mpi integrate_mpi.cpp)
-#target_link_libraries(integrate_mpi ${MPI_CXX_LIBRARIES})
-
-# Example OpenMP program
 enable_openmp_support()
-#add_executable(integrate_omp integrate_omp.cpp)
 
+# ----------------------------------------------------------------------------
+# If the CUDA_SDK_ROOT_DIR is defined
 
 IF (CUDA_SDK_ROOT_DIR)
   INCLUDE_DIRECTORIES(${CUDA_SDK_ROOT_DIR}/common/inc)
   INCLUDE_DIRECTORIES(${CUDA_SDK_ROOT_DIR}/../shared/inc)
   ADD_DEFINITIONS(-DWITH_CUDA_SDK)
-ENDIF
+ENDIF()
 
-## Using Armadillo
-#find_package( Armadillo REQUIRED )
-#include_directories(${ARMADILLO_INCLUDE_DIRS})
+# ----------------------------------------------------------------------------
+# Using Armadillo
 
-# include OpenGL
-find_package("GLUT")
-find_package("OpenGL")
+#FIND_PACKAGE( Armadillo REQUIRED )
+#INCLUDE_DIRECTORIES(${ARMADILLO_INCLUDE_DIRS})
+
+# ----------------------------------------------------------------------------
+# Include OpenGL support
+
+FIND_PACKAGE("GLUT")
+FIND_PACKAGE("OpenGL")
+
 #freeglut is not found properly on windows
 IF ("${CH_OS}" STREQUAL "WINDOWS")
 	SET(FREEGLUT_LIB_PATH       ""    	CACHE PATH "Where is freeglut located?")		 	
@@ -67,21 +72,52 @@ IF (${GLUT_glut_LIBRARY})
 	ADD_DEFINITIONS(-DWITH_GLUT)
 ENDIF()
 
-# Example CUDA program
+# ----------------------------------------------------------------------------
+# Enable CUDA support
+
 enable_cuda_support()
 
-# Create the implicit-beams-GPU library
-cuda_add_library(ibeamsgpuLIB SHARED ANCFSystem.cuh ANCFSystem.cu ANCFintForce.cu include.cuh ANCFConstraints.cu)# ANCFContact.cu)
-target_link_libraries(ibeamsgpuLIB 
+# ----------------------------------------------------------------------------
+# List the files that make up the ImplicitBeamsGPU library
+
+SET(IBEAMS_SOURCES
+	src/ANCFApi.h
+	src/include.cuh
+	src/ANCFSystem.cuh
+	src/ANCFSystem.cu
+	src/ANCFConstraints.cu
+	src/ANCFintForce.cu
+	#src/ANCFContact.cu
+	src/Constraint.cuh
+	src/Element.cuh
+	src/Node.cuh
+	src/Particle.cuh
+	)
+
+SOURCE_GROUP(src FILES ${IBEAMS_SOURCES})
+
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src)
+
+# ----------------------------------------------------------------------------
+# Add the ImplicitBeamsGPU library
+
+CUDA_ADD_LIBRARY(ImplicitBeamsGPU SHARED ${IBEAMS_SOURCES})
+TARGET_LINK_LIBRARIES(ImplicitBeamsGPU 
 	${GLUT_LIBRARIES}
 	${FREEGLUT_LIB}
 	${OPENGL_LIBRARIES}
 #	${ARMADILLO_LIBRARIES}
-#	${SSCD_LIB}
 	)
-set_target_properties(ibeamsgpuLIB PROPERTIES COMPILE_DEFINITIONS "IBEAMS_COMPILE_LIBRARY")
+SET_TARGET_PROPERTIES(ImplicitBeamsGPU PROPERTIES COMPILE_DEFINITIONS "IBEAMS_COMPILE_LIBRARY")
 
-# Create the executable
-cuda_add_executable(ImplicitBeamsGPU main.cu)
-target_link_libraries(ImplicitBeamsGPU ibeamsgpuLIB)
-add_dependencies(ImplicitBeamsGPU ibeamsgpuLIB)
+INSTALL(TARGETS ImplicitBeamsGPU
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+)
+
+# ----------------------------------------------------------------------------
+# Add the models
+
+ADD_SUBDIRECTORY(models)
+
