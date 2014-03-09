@@ -40,8 +40,13 @@ include_directories(${SPIKE_INC_DIR})
 # Example OpenMP program
 enable_openmp_support()
 #add_executable(integrate_omp integrate_omp.cpp)
-include_directories(${CUDA_SDK_ROOT_DIR}/common/inc)
-include_directories(${CUDA_SDK_ROOT_DIR}/../shared/inc)
+
+
+IF (CUDA_SDK_ROOT_DIR)
+  INCLUDE_DIRECTORIES(${CUDA_SDK_ROOT_DIR}/common/inc)
+  INCLUDE_DIRECTORIES(${CUDA_SDK_ROOT_DIR}/../shared/inc)
+  ADD_DEFINITIONS(-DWITH_CUDA_SDK)
+ENDIF
 
 ## Using Armadillo
 #find_package( Armadillo REQUIRED )
@@ -50,22 +55,33 @@ include_directories(${CUDA_SDK_ROOT_DIR}/../shared/inc)
 # include OpenGL
 find_package("GLUT")
 find_package("OpenGL")
-	#freeglut is not found properly on windows
-	IF ("${CH_OS}" STREQUAL "WINDOWS")
-		SET(FREEGLUT_LIB_PATH       ""    	CACHE PATH "Where is freeglut located?")		 	
-		FIND_LIBRARY( FREEGLUT_LIB NAMES glut glut32 freeglut PATHS ${FREEGLUT_LIB_PATH})
-	ENDIF()
-	MARK_AS_ADVANCED(FORCE FREEGLUT_LIB)
+#freeglut is not found properly on windows
+IF ("${CH_OS}" STREQUAL "WINDOWS")
+	SET(FREEGLUT_LIB_PATH       ""    	CACHE PATH "Where is freeglut located?")		 	
+	FIND_LIBRARY( FREEGLUT_LIB NAMES glut glut32 freeglut PATHS ${FREEGLUT_LIB_PATH})
+ENDIF()
+MARK_AS_ADVANCED(FORCE FREEGLUT_LIB)
+
+# If GLUT was found, define the macro WITH_GLUT
+IF (${GLUT_glut_LIBRARY})
+	ADD_DEFINITIONS(-DWITH_GLUT)
+ENDIF()
 
 # Example CUDA program
 enable_cuda_support()
-cuda_add_library(implicitbeamsgpu SHARED ANCFSystem.cuh ANCFSystem.cu ANCFintForce.cu include.cuh ANCFConstraints.cu)# ANCFContact.cu)
-target_link_libraries(implicitbeamsgpu 
+
+# Create the implicit-beams-GPU library
+cuda_add_library(ibeamsgpuLIB SHARED ANCFSystem.cuh ANCFSystem.cu ANCFintForce.cu include.cuh ANCFConstraints.cu)# ANCFContact.cu)
+target_link_libraries(ibeamsgpuLIB 
 	${GLUT_LIBRARIES}
 	${FREEGLUT_LIB}
 	${OPENGL_LIBRARIES}
 #	${ARMADILLO_LIBRARIES}
 #	${SSCD_LIB}
 	)
+set_target_properties(ibeamsgpuLIB PROPERTIES COMPILE_DEFINITIONS "IBEAMS_COMPILE_LIBRARY")
+
+# Create the executable
 cuda_add_executable(ImplicitBeamsGPU main.cu)
-target_link_libraries(ImplicitBeamsGPU implicitbeamsgpu)
+target_link_libraries(ImplicitBeamsGPU ibeamsgpuLIB)
+add_dependencies(ImplicitBeamsGPU ibeamsgpuLIB)

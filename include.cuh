@@ -4,7 +4,11 @@
 //#include <armadillo>
 
 #include <cuda.h>
+#ifdef WITH_CUDA_SDK
 #include <helper_math.h>
+#else
+#include "helper_math.h"
+#endif
 #include <stdlib.h>
 #include <vector>
 #include <iostream>
@@ -18,7 +22,9 @@
 #include <thrust/inner_product.h>
 #include <thrust/iterator/zip_iterator.h>
 #include <thrust/remove.h>
+#ifdef WITH_GLUT
 #include <GL/glut.h>
+#endif
 #include "omp.h"
 //#include <sscd.h>
 
@@ -226,7 +232,7 @@ static camreal4 operator %(const camreal4 rhs, const camreal4 lhs) {
 }
 ////////////////////////END Quaternion and Vector Code////////////////////////
 
-
+#ifdef WITH_GLUT
 class OpenGLCamera {
 public:
 	OpenGLCamera(camreal3 pos, camreal3 lookat, camreal3 up,
@@ -342,5 +348,25 @@ public:
 	camreal camera_heading, camera_pitch, scale;
 	camreal3 dir, mouse_pos, camera_pos_delta;
 };
+#endif  // WITH_GLUT
+
+
+// Export/import macros
+
+#if (((defined WIN32)|| (defined WIN64))  || (defined(__MINGW32__) || defined(__CYGWIN__)))
+		#define IBeamsEXPORT __declspec(dllexport)
+		#define IBEamsIMPORT __declspec(dllimport)
+#else
+		#define IBeamsEXPORT  
+		#define IBeamsIMPORT  
+#endif
+
+
+#if defined(IBEAMS_COMPILE_LIBRARY)
+#define IBeamsApi IBeamsEXPORT
+#else
+#define IBEamsApi IBeamsIMPORT
+#endif
+
 
 #endif

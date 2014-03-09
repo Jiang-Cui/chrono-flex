@@ -9,6 +9,8 @@ bool showSphere = 1;
 
 // Create the system (placed outside of main so it is available to the OpenGL code)
 ANCFSystem sys;
+
+#ifdef WITH_GLUT
 OpenGLCamera oglcamera(camreal3(-1,1,-1),camreal3(0,0,0),camreal3(0,1,0),.01);
 
 // OPENGL RENDERING CODE //
@@ -155,7 +157,7 @@ void CallBackMouseFunc(int button, int state, int x, int y) {
 void CallBackMotionFunc(int x, int y) {
 	oglcamera.Move2D(x, y);
 }
-
+#endif
 // END OPENGL RENDERING CODE //
 
 int main(int argc, char** argv)
@@ -164,7 +166,9 @@ int main(int argc, char** argv)
 	// ImplicitBeamsGPU <numPartitions> <numBeamsPerSide> <solverType> <usePreconditioning> <elasticModulus> <dataFolder>
 	// solverType: (0) BiCGStab, (1) BiCGStab1, (2) BiCGStab2, (3) MinRes
 
+#ifdef WITH_GLUT
 	bool visualize = false;
+#endif
 
 	sys.setTimeStep(1e-3, 1e-10);
 	sys.setMaxNewtonIterations(20);
@@ -316,6 +320,7 @@ int main(int argc, char** argv)
 	printf("System initialized!\n");
 	sys.printSolverParams();
 	
+#ifdef WITH_GLUT
 	if(visualize)
 	{
 		glutInit(&argc, argv);
@@ -333,6 +338,7 @@ int main(int argc, char** argv)
 		initScene();
 		glutMainLoop();
 	}
+#endif
 
 	stringstream ss_m;
 	ss_m << data_folder << "/" << "timing_" << atoi(argv[1]) << "_" << atoi(argv[2]) << "_" << atoi(argv[3]) << "_" << atoi(argv[4]) << "_" << atof(argv[5]) << ".txt";
