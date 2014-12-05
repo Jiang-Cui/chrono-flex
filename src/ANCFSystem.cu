@@ -878,7 +878,6 @@ float3 ANCFSystem::getXYZVelocityParticle(int index) {
 }
 
 int ANCFSystem::saveLHS() {
-	char filename[100];
 	posFile.open("../lhs.dat");
 	posFile << "symmetric" << endl;
 	posFile << anew_h.size() << " " << anew_h.size() << " " << lhsI_h.size()
@@ -900,10 +899,10 @@ int ANCFSystem::writeToFile(string fileName) {
 	p_h = p_d;
 	double* posAll = CASTD1(p_h);
 	double* pos;
-	float3 posPart;
 	double l;
 	double r;
 	posFile << elements.size() << "," << endl;
+//  float3 posPart;
 //	for(int i=0;i<particles.size();i++)
 //	{
 //		r = particles[i].getRadius();
