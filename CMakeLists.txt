@@ -61,14 +61,20 @@ FIND_PACKAGE("GLUT")
 FIND_PACKAGE("OpenGL")
 
 #freeglut is not found properly on windows
-IF ("${CH_OS}" STREQUAL "WINDOWS")
-	SET(FREEGLUT_LIB_PATH       ""    	CACHE PATH "Where is freeglut located?")		 	
+IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	SET(FREEGLUT_LIB_PATH "" CACHE PATH "Where is freeglut located?")		 	
+	SET(FREEGLUT_INC_PATH "" CACHE PATH "Where are the freeglut headers located" )	 	
+	FIND_LIBRARY( FREEGLUT_LIB NAMES glut glut32 freeglut PATHS ${FREEGLUT_LIB_PATH})
+ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+	SET(FREEGLUT_LIB_PATH      "/opt/X11/lib/")	
+	SET(FREEGLUT_INC_PATH     "/opt/X11/include/")	 	
 	FIND_LIBRARY( FREEGLUT_LIB NAMES glut glut32 freeglut PATHS ${FREEGLUT_LIB_PATH})
 ENDIF()
-MARK_AS_ADVANCED(FORCE FREEGLUT_LIB)
+#MARK_AS_ADVANCED(FORCE FREEGLUT_LIB)
 
 # If GLUT was found, define the macro WITH_GLUT
-IF (${GLUT_glut_LIBRARY})
+IF (FREEGLUT_LIB)
+INCLUDE_DIRECTORIES(${FREEGLUT_INC_PATH})
 	ADD_DEFINITIONS(-DWITH_GLUT)
 ENDIF()
 
