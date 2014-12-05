@@ -2,7 +2,7 @@
 # CMake configuration file for ImplicitBeamsGPU
 #=============================================================================
 
-# Minimum version of CMake required. Don't touch.
+# Minimum version of CMake required.
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
 # Set the name of your project
@@ -11,16 +11,16 @@ PROJECT(ImplicitBeamsGPU)
 # Include macros from the SBEL utils library
 INCLUDE(SBELUtils.cmake)
 
-##########################################################
-# If using Makefiles, be sure to set CMAKE_BUILD_TYPE to # 
-# select different build configurations.                 #
-# Possible values:                                       #
-# - RELEASE - fully optimized for speed                  #
-# - DEBUG - unoptimized, with debugging symbols          #
-# - RELWITHDEBUGINFO - optimized, with debugging symbols #
-# - MINSIZEREL - optimized for size                      #
-# - [not set] - unoptimized                              #
-##########################################################
+# ------------------------------------------------------------------------------
+# Specify output locations for libraries and executables
+# ------------------------------------------------------------------------------
+SET(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
+SET(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
+
+IF (MSVC OR XCODE_VERSION)
+  SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+ENDIF()
+
 
 # ----------------------------------------------------------------------------
 # Require CUSP (headers-only library)
@@ -57,9 +57,6 @@ ENDIF()
 # ----------------------------------------------------------------------------
 # Include OpenGL support
 
-FIND_PACKAGE("GLUT")
-FIND_PACKAGE("OpenGL")
-
 #freeglut is not found properly on windows
 IF(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	SET(FREEGLUT_LIB_PATH "" CACHE PATH "Where is freeglut located?")		 	
@@ -69,14 +66,22 @@ ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	SET(FREEGLUT_LIB_PATH      "/opt/X11/lib/")	
 	SET(FREEGLUT_INC_PATH     "/opt/X11/include/")	 	
 	FIND_LIBRARY( FREEGLUT_LIB NAMES glut glut32 freeglut PATHS ${FREEGLUT_LIB_PATH})
+ELSE()
+	FIND_PACKAGE("GLUT")
+	FIND_PACKAGE("OpenGL")
 ENDIF()
 #MARK_AS_ADVANCED(FORCE FREEGLUT_LIB)
 
 # If GLUT was found, define the macro WITH_GLUT
 IF (FREEGLUT_LIB)
-INCLUDE_DIRECTORIES(${FREEGLUT_INC_PATH})
+	INCLUDE_DIRECTORIES(${FREEGLUT_INC_PATH})
 	ADD_DEFINITIONS(-DWITH_GLUT)
 ENDIF()
+
+IF (${GLUT_FOUND})
+	ADD_DEFINITIONS(-DWITH_GLUT)
+ENDIF()
+
 
 # ----------------------------------------------------------------------------
 # Enable CUDA support
@@ -107,7 +112,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src)
 # ----------------------------------------------------------------------------
 # Add the ImplicitBeamsGPU library
 
-CUDA_ADD_LIBRARY(ImplicitBeamsGPU SHARED ${IBEAMS_SOURCES})
+CUDA_ADD_LIBRARY(ImplicitBeamsGPU STATIC ${IBEAMS_SOURCES})
 TARGET_LINK_LIBRARIES(ImplicitBeamsGPU 
 	${GLUT_LIBRARIES}
 	${FREEGLUT_LIB}

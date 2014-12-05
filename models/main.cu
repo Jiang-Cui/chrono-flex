@@ -167,7 +167,7 @@ int main(int argc, char** argv)
 	// solverType: (0) BiCGStab, (1) BiCGStab1, (2) BiCGStab2, (3) MinRes
 
 #ifdef WITH_GLUT
-	bool visualize = false;
+	bool visualize = true;
 #endif
 
 	sys.setTimeStep(1e-3, 1e-10);
