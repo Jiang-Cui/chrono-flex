@@ -27,3 +27,7 @@ ENDIF("${isSystemDir}" STREQUAL "-1")
 cuda_add_executable(FlexibleNet main.cu)
 target_link_libraries(FlexibleNet ImplicitBeamsGPU)
 add_dependencies(FlexibleNet ImplicitBeamsGPU)
+
+cuda_add_executable(MultiGPU main_multiGPU.cu)
+target_link_libraries(MultiGPU ImplicitBeamsGPU)
+add_dependencies(MultiGPU ImplicitBeamsGPU)
