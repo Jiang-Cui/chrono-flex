@@ -119,7 +119,18 @@ void drawAll()
 void renderSceneAll(){
 	if(OGL){
 		//if(sys.timeIndex%10==0)
-			drawAll();
+		drawAll();
+
+		// Force a preconditioner update if needed
+		if ((sys.preconditionerUpdateModulus > 0) && (sys.timeIndex % sys.preconditionerUpdateModulus == 0)) {
+		  //mySolver->update(lhs.values);
+		  delete sys.mySolver;
+		  sys.mySolver = new SpikeSolver(sys.partitions, sys.solverOptions);
+		  sys.mySolver->setup(sys.lhs);
+		  sys.precUpdated = true;
+		  printf("Preconditioner updated (step condition)!\n");
+		}
+
 		sys.DoTimeStep();
 	}
 }
@@ -173,146 +184,119 @@ int main(int argc, char** argv)
 	sys.setTimeStep(1e-3, 1e-10);
 	sys.setMaxNewtonIterations(20);
 	sys.setMaxKrylovIterations(5000);
-	sys.setNumPartitions((int)atoi(argv[1]));
 	sys.numContactPoints = 30;
 
+	sys.setNumPartitions(1);
+	int numElementsPerSide = 4;
+	sys.setSolverType(2);
+	sys.setPrecondType(0);
+	double E = 2e11;
 
 	double t_end = 5.0;
 	int    precUpdateInterval = -1;
 	float  precMaxKrylov = -1;
 	int    outputInterval = 100;
 
-	string data_folder;
+	string data_folder = "./garbage";
 
-//	if(argc == 3)
-//	{
-//		sys.setAlpha_HHT(-10);
-//		int numElements = 1;
-//		double length = 2;
-//		double lengthElement = length/numElements;
-//		double r = 0.01;
-//		double E = 2e7;
-//		double rho = 7810;
-//		double nu = .3;
-//		double P = -60;
-//		Element element = Element(Node(0, 0, 0, 1, 0, 0), Node(lengthElement, 0, 0, 1, 0, 0), r, nu, E, rho);
-//		sys.addElement(&element);
-//		sys.addConstraint_AbsoluteFixed(0);
-//		sys.numContactPoints = 10;
-//
-//		for(int i=1;i<numElements;i++)
-//		{
-//			element = Element(Node(i*lengthElement, 0, 0, 1, 0, 0), Node((i+1)*lengthElement, 0, 0, 1, 0, 0), r, nu, E, rho);
-//			sys.addElement(&element);
-//			sys.addConstraint_RelativeFixed(sys.elements[i-1], 1,sys.elements[i], 0);
-//		}
-//		sys.addForce(&element,1,make_float3(0,P,0));
-//
-////		// should get deflection = PL^3/(3EI)
-////		double I = .25*PI*r*r*r*r;
-////		double deflection = P*pow(length,3)/(3*E*I);
-////		cout << deflection << endl;
-////		cin.get();
-//	}
-//	else
+	sys.fullJacobian = 1;
+	double length = 1;
+	double r = .02;
+	double rho = 2200;
+	double nu = .3;
+
+	if(argc>1) {
+	  sys.setNumPartitions((int)atoi(argv[1]));
+    numElementsPerSide = atoi(argv[2]);
+    sys.setSolverType((int)atoi(argv[3]));
+    sys.setPrecondType(atoi(argv[4]));
+    if(atoi(argv[4])) {
+      sys.preconditionerUpdateModulus = precUpdateInterval;
+      sys.preconditionerMaxKrylovIterations = precMaxKrylov;
+    }
+    E = atof(argv[5]);
+    data_folder = argv[6];
+	}
+
+	Element element;
+	int k = 0;
+	// Add elements in x-direction
+	for (int j = 0; j < numElementsPerSide+1; j++) {
+	  for (int i = 0; i < numElementsPerSide; i++) {
+	    element = Element(Node(i*length, 0, j*length, 1, 0, 0),
+	        Node((i+1)*length, 0, j*length, 1, 0, 0),
+	        r, nu, E, rho);
+	    sys.addElement(&element);
+	    k++;
+	    if(k%100==0) printf("Elements %d\n",k);
+	  }
+	}
+
+	// Add elements in z-direction
+	for (int j = 0; j < numElementsPerSide+1; j++) {
+	  for (int i = 0; i < numElementsPerSide; i++) {
+	    element = Element(Node(j*length, 0, i*length, 0, 0, 1),
+	        Node(j*length, 0, (i+1)*length, 0, 0, 1),
+	        r, nu, E, rho);
+	    sys.addElement(&element);
+	    k++;
+	    if(k%100==0) printf("Elements %d\n",k);
+	  }
+	}
+
+	// Fix corners to ground
+	sys.addConstraint_AbsoluteSpherical(sys.elements[0], 0);
+	sys.addConstraint_AbsoluteSpherical(sys.elements[2*numElementsPerSide*(numElementsPerSide+1)-numElementsPerSide], 0);
+	sys.addConstraint_AbsoluteSpherical(sys.elements[numElementsPerSide*(numElementsPerSide+1)-numElementsPerSide], 0);
+	sys.addConstraint_AbsoluteSpherical(sys.elements[2*numElementsPerSide*(numElementsPerSide+1)-1], 1);
+	sys.addConstraint_AbsoluteSpherical(sys.elements[numElementsPerSide*(numElementsPerSide+1)-1], 1);
+
+	// Constrain x-strands together
+	for(int j=0; j < numElementsPerSide+1; j++)
 	{
-		sys.fullJacobian = 1;
-		double length = 1;
-		double r = .02;
-		double E = 2e11;
-		double rho = 2200;
-		double nu = .3;
-		int numElementsPerSide = atoi(argv[2]);
-		sys.setSolverType((int)atoi(argv[3]));
-		sys.setPrecondType(atoi(argv[4]));
-		if(atoi(argv[4])) {
-			sys.preconditionerUpdateModulus = precUpdateInterval;
-			sys.preconditionerMaxKrylovIterations = precMaxKrylov;
-		}
-		E = atof(argv[5]);
-		data_folder = argv[6];
+	  for(int i=0; i < numElementsPerSide-1; i++)
+	  {
+	    sys.addConstraint_RelativeFixed(
+	        sys.elements[i+j*numElementsPerSide], 1,
+	        sys.elements[i+1+j*numElementsPerSide], 0);
+	  }
+	}
 
-		Element element;
-		int k = 0;
-		// Add elements in x-direction
-		for (int j = 0; j < numElementsPerSide+1; j++) {
-			for (int i = 0; i < numElementsPerSide; i++) {
-				element = Element(Node(i*length, 0, j*length, 1, 0, 0),
-								  Node((i+1)*length, 0, j*length, 1, 0, 0),
-								  r, nu, E, rho);
-				sys.addElement(&element);
-				k++;
-				if(k%100==0) printf("Elements %d\n",k);
-			}
-		}
+	// Constrain z-strands together
+	int offset = numElementsPerSide*(numElementsPerSide+1);
+	for(int j=0; j < numElementsPerSide+1; j++)
+	{
+	  for(int i=0; i < numElementsPerSide-1; i++)
+	  {
+	    sys.addConstraint_RelativeFixed(
+	        sys.elements[i+offset+j*numElementsPerSide], 1,
+	        sys.elements[i+offset+1+j*numElementsPerSide], 0);
+	  }
+	}
 
-		// Add elements in z-direction
-		for (int j = 0; j < numElementsPerSide+1; j++) {
-			for (int i = 0; i < numElementsPerSide; i++) {
-				element = Element(Node(j*length, 0, i*length, 0, 0, 1),
-								  Node(j*length, 0, (i+1)*length, 0, 0, 1),
-								  r, nu, E, rho);
-				sys.addElement(&element);
-				k++;
-				if(k%100==0) printf("Elements %d\n",k);
-			}
-		}
+	// Constrain cross-streams together
+	for(int j=0; j < numElementsPerSide; j++)
+	{
+	  for(int i=0; i < numElementsPerSide; i++)
+	  {
+	    sys.addConstraint_RelativeSpherical(
+	        sys.elements[i*numElementsPerSide+j], 0,
+	        sys.elements[offset+i+j*numElementsPerSide], 0);
+	  }
+	}
 
-		// Fix corners to ground
-		sys.addConstraint_AbsoluteSpherical(sys.elements[0], 0);
-		sys.addConstraint_AbsoluteSpherical(sys.elements[2*numElementsPerSide*(numElementsPerSide+1)-numElementsPerSide], 0);
-		sys.addConstraint_AbsoluteSpherical(sys.elements[numElementsPerSide*(numElementsPerSide+1)-numElementsPerSide], 0);
-		sys.addConstraint_AbsoluteSpherical(sys.elements[2*numElementsPerSide*(numElementsPerSide+1)-1], 1);
-		sys.addConstraint_AbsoluteSpherical(sys.elements[numElementsPerSide*(numElementsPerSide+1)-1], 1);
+	for(int i=0; i < numElementsPerSide; i++)
+	{
+	  sys.addConstraint_RelativeSpherical(
+	      sys.elements[numElementsPerSide-1+numElementsPerSide*i], 1,
+	      sys.elements[2*offset-numElementsPerSide+i], 0);
+	}
 
-
-		// Constrain x-strands together
-		for(int j=0; j < numElementsPerSide+1; j++)
-		{
-			for(int i=0; i < numElementsPerSide-1; i++)
-			{
-				sys.addConstraint_RelativeFixed(
-						sys.elements[i+j*numElementsPerSide], 1,
-						sys.elements[i+1+j*numElementsPerSide], 0);
-			}
-		}
-
-		// Constrain z-strands together
-		int offset = numElementsPerSide*(numElementsPerSide+1);
-		for(int j=0; j < numElementsPerSide+1; j++)
-		{
-			for(int i=0; i < numElementsPerSide-1; i++)
-			{
-				sys.addConstraint_RelativeFixed(
-						sys.elements[i+offset+j*numElementsPerSide], 1,
-						sys.elements[i+offset+1+j*numElementsPerSide], 0);
-			}
-		}
-
-		// Constrain cross-streams together
-		for(int j=0; j < numElementsPerSide; j++)
-		{
-			for(int i=0; i < numElementsPerSide; i++)
-			{
-				sys.addConstraint_RelativeSpherical(
-						sys.elements[i*numElementsPerSide+j], 0,
-						sys.elements[offset+i+j*numElementsPerSide], 0);
-			}
-		}
-
-		for(int i=0; i < numElementsPerSide; i++)
-		{
-			sys.addConstraint_RelativeSpherical(
-						sys.elements[numElementsPerSide-1+numElementsPerSide*i], 1,
-						sys.elements[2*offset-numElementsPerSide+i], 0);
-		}
-
-		for(int i=0; i < numElementsPerSide; i++)
-		{
-			sys.addConstraint_RelativeSpherical(
-						sys.elements[numElementsPerSide*(numElementsPerSide+1)+numElementsPerSide-1+numElementsPerSide*i], 1,
-						sys.elements[numElementsPerSide*numElementsPerSide+i], 0);
-		}
+	for(int i=0; i < numElementsPerSide; i++)
+	{
+	  sys.addConstraint_RelativeSpherical(
+	      sys.elements[numElementsPerSide*(numElementsPerSide+1)+numElementsPerSide-1+numElementsPerSide*i], 1,
+	      sys.elements[numElementsPerSide*numElementsPerSide+i], 0);
 	}
 
 	printf("%d, %d, %d\n",sys.elements.size(),sys.constraints.size(),12*sys.elements.size()+sys.constraints.size());
@@ -357,6 +341,17 @@ int main(int argc, char** argv)
 			sys.writeToFile(ss.str());
 			fileIndex++;
 		}
+
+    // Force a preconditioner update if needed
+    if ((sys.preconditionerUpdateModulus > 0) && (sys.timeIndex % sys.preconditionerUpdateModulus == 0)) {
+      //mySolver->update(lhs.values);
+      delete sys.mySolver;
+      sys.mySolver = new SpikeSolver(sys.partitions, sys.solverOptions);
+      sys.mySolver->setup(sys.lhs);
+      sys.precUpdated = true;
+      printf("Preconditioner updated (step condition)!\n");
+    }
+
 		sys.DoTimeStep();
 		ofile << sys.time                 << ", "
 		      << sys.stepTime             << ", "

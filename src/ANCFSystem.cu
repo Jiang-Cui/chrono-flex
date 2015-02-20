@@ -46,8 +46,6 @@ ANCFSystem::ANCFSystem()
 	solverOptions.safeFactorization = true;
 	solverOptions.trackReordering = true;
 	solverOptions.maxNumIterations = 5000;
-	//mySpmv = new SpmvFunctor(lhs);
-	// m_spmv = new MySpmv(lhs_mass, lhs_phiq, lhsVec);
 	preconditionerUpdateModulus = -1; // the preconditioner updates every ___ time steps
 	preconditionerMaxKrylovIterations = -1; // the preconditioner updates if Krylov iterations are greater than ____ iterations
 	// end spike stuff
@@ -631,10 +629,6 @@ int ANCFSystem::initializeSystem() {
 	}
 
 	initializeDevice();
-	//ANCFSystem::initializeBoundingBoxes_CPU();
-	//detector.updateBoundingBoxes(aabb_data_d);
-	//detector.setBoundingBoxPointer(&aabb_data_d);
-	//detector.detectPossibleCollisions();
 
 	ANCFSystem::resetLeftHandSideMatrix();
 	ANCFSystem::updateInternalForces();
@@ -669,13 +663,9 @@ int ANCFSystem::initializeSystem() {
 	cusp::copy(v, vnew);
 	cusp::copy(p, pnew);
 
-
 	// Vectors for Spike solver stats
 	spikeSolveTime.resize(maxNewtonIterations);
 	spikeNumIter.resize(maxNewtonIterations);
-
-
-	//ANCFSystem::updateParticleDynamics();
 
 	return 0;
 }
@@ -686,20 +676,12 @@ int ANCFSystem::DoTimeStep() {
 	cudaEventCreate(&stop);
 	cudaEventRecord(start, 0);
 
-	//ANCFSystem::updateParticleDynamics();
 	stepKrylovIterations = 0;
 	precUpdated = false;
 
 	// update q and q_dot for initial guess
 	cusp::blas::axpbypcz(p, v, a, pnew, 1, h, .5 * h * h);
 	cusp::blas::axpby(v, a, vnew, 1, h);
-
-	// Force a preconditioner update if needed
-	if ((preconditionerUpdateModulus > 0) && (timeIndex % preconditionerUpdateModulus == 0)) {
-		mySolver->update(lhs.values);
-		precUpdated = true;
-		printf("Preconditioner updated (step condition)!\n");
-	}
 
 	// Perform Newton iterations
 	int it;
