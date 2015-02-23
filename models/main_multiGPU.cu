@@ -58,27 +58,9 @@ void drawAll()
     oglcamera.Update();
 
     for(int sysIndex = 0; sysIndex < numSystems; sysIndex++) {
-      for (int i = 0; i < sys[sysIndex]->particles.size(); i++) {
-        glColor3f(0.0f, 1.0f, 0.0f);
-        glPushMatrix();
-        float3 pos = sys[sysIndex]->getXYZPositionParticle(i);
-        glTranslatef(pos.x, pos.y, pos.z);
-        glutSolidSphere(sys[sysIndex]->particles[i].getRadius(), 30, 30);
-        glPopMatrix();
 
-        //indicate velocity
-        glLineWidth(sys[sysIndex]->elements[i].getRadius()*500);
-        glColor3f(1.0f,0.0f,0.0f);
-        glBegin(GL_LINES);
-        glVertex3f(pos.x,pos.y,pos.z);
-        float3 vel = sys[sysIndex]->getXYZVelocityParticle(i);
-        //cout << "v:" << vel.x << " " << vel.y << " " << vel.z << endl;
-        pos +=2*sys[sysIndex]->particles[i].getRadius()*normalize(vel);
-        glVertex3f(pos.x,pos.y,pos.z);
-        glEnd();
-        glFlush();
-      }
-
+      glColor3f(0.0f,0.0f,1.0f);
+      if(sysIndex==1) glColor3f(1.0f,0.0f,0.0f);
       for(int i=0;i<sys[sysIndex]->elements.size();i++)
       {
         int xiDiv = sys[sysIndex]->numContactPoints;
@@ -87,7 +69,7 @@ void drawAll()
 
         if(showSphere)
         {
-          glColor3f(0.0f,0.0f,1.0f);
+          //glColor3f(0.0f,0.0f,1.0f);
           for(int j=0;j<xiDiv;j++)
           {
             glPushMatrix();
@@ -102,7 +84,7 @@ void drawAll()
           int xiDiv = sys[sysIndex]->numContactPoints;
           double xiInc = 1/(static_cast<double>(xiDiv-1));
           glLineWidth(sys[sysIndex]->elements[i].getRadius()*500);
-          glColor3f(0.0f,1.0f,0.0f);
+          //glColor3f(0.0f,1.0f,0.0f);
           glBegin(GL_LINE_STRIP);
           for(int j=0;j<sys[sysIndex]->numContactPoints;j++)
           {
@@ -230,6 +212,7 @@ int main(int argc, char** argv)
       data_folder = argv[6];
     }
   }
+  sys[1]->gravity = make_double3(0,9.81,0); // Invert gravity so we can see the difference between the systems!
 
   /////////////////////////////////////////////////////////////////////////
   //

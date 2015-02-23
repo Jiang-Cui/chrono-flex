@@ -40,6 +40,7 @@ ANCFSystem::ANCFSystem()
 	setAlpha_HHT(-0.1);
 	setTimeStep(1e-3);
 	maxNewtonIterations = 20;
+	gravity = make_double3(0,-9.81,0);
 
 	// spike stuff
 	partitions = 1;
@@ -241,18 +242,18 @@ int ANCFSystem::addElement(Element* element) {
 	double A = PI * r * r;
 
 	// update external force vector (gravity)
-	fext_h.push_back(rho * A * a * GRAVITYx / 0.2e1);
-	fext_h.push_back(rho * A * a * GRAVITYy / 0.2e1);
-	fext_h.push_back(rho * A * a * GRAVITYz / 0.2e1);
-	fext_h.push_back(rho * A * a * a * GRAVITYx / 0.12e2);
-	fext_h.push_back(rho * A * a * a * GRAVITYy / 0.12e2);
-	fext_h.push_back(rho * A * a * a * GRAVITYz / 0.12e2);
-	fext_h.push_back(rho * A * a * GRAVITYx / 0.2e1);
-	fext_h.push_back(rho * A * a * GRAVITYy / 0.2e1);
-	fext_h.push_back(rho * A * a * GRAVITYz / 0.2e1);
-	fext_h.push_back(-rho * A * a * a * GRAVITYx / 0.12e2);
-	fext_h.push_back(-rho * A * a * a * GRAVITYy / 0.12e2);
-	fext_h.push_back(-rho * A * a * a * GRAVITYz / 0.12e2);
+	fext_h.push_back(rho * A * a * gravity.x / 0.2e1);
+	fext_h.push_back(rho * A * a * gravity.y / 0.2e1);
+	fext_h.push_back(rho * A * a * gravity.z / 0.2e1);
+	fext_h.push_back(rho * A * a * a * gravity.x / 0.12e2);
+	fext_h.push_back(rho * A * a * a * gravity.y / 0.12e2);
+	fext_h.push_back(rho * A * a * a * gravity.z / 0.12e2);
+	fext_h.push_back(rho * A * a * gravity.x / 0.2e1);
+	fext_h.push_back(rho * A * a * gravity.y / 0.2e1);
+	fext_h.push_back(rho * A * a * gravity.z / 0.2e1);
+	fext_h.push_back(-rho * A * a * a * gravity.x / 0.12e2);
+	fext_h.push_back(-rho * A * a * a * gravity.y / 0.12e2);
+	fext_h.push_back(-rho * A * a * a * gravity.z / 0.12e2);
 
 	for (int i = 0; i < 12; i++) {
 		for (int j = 0; j < 12; j++) {
@@ -355,7 +356,7 @@ int ANCFSystem::updatePhi() {
 }
 
 __global__ void updateParticleDynamics_GPU(double h, double* a, double* v,
-		double* p, double* f, MaterialParticle* materials, int numParticles) {
+		double* p, double* f, MaterialParticle* materials, double3 gravity, int numParticles) {
 	int i = threadIdx.x + blockIdx.x * blockDim.x;
 
 	if (i < numParticles) {
@@ -365,9 +366,9 @@ __global__ void updateParticleDynamics_GPU(double h, double* a, double* v,
 		f = &f[3 * i];
 		MaterialParticle material = materials[i];
 
-		a[0] = material.massInverse * f[0] + GRAVITYx;
-		a[1] = material.massInverse * f[1] + GRAVITYy;
-		a[2] = material.massInverse * f[2] + GRAVITYz;
+		a[0] = material.massInverse * f[0] + gravity.x;
+		a[1] = material.massInverse * f[1] + gravity.y;
+		a[2] = material.massInverse * f[2] + gravity.z;
 
 		for (int j = 0; j < 3; j++) {
 			v[j] += h * a[j];
@@ -377,7 +378,7 @@ __global__ void updateParticleDynamics_GPU(double h, double* a, double* v,
 }
 
 int ANCFSystem::updateParticleDynamics() {
-	updateParticleDynamics_GPU<<<dimGridParticles,dimBlockParticles>>>(h,CASTD1(aParticle_d), CASTD1(vParticle_d), CASTD1(pParticle_d), CASTD1(fParticle_d), CASTMP(pMaterials_d), particles.size());
+	updateParticleDynamics_GPU<<<dimGridParticles,dimBlockParticles>>>(h,CASTD1(aParticle_d), CASTD1(vParticle_d), CASTD1(pParticle_d), CASTD1(fParticle_d), CASTMP(pMaterials_d), gravity, particles.size());
 
 	return 0;
 }

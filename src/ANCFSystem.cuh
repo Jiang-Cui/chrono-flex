@@ -50,10 +50,6 @@ private:
 	DeviceValueArrayView& mtemp;
 };
 
-#define GRAVITYx 0
-#define GRAVITYy -9.81
-#define GRAVITYz 0
-
 struct Material {
 	double r;
 	double nu;
@@ -78,6 +74,7 @@ public:
 	int stepNewtonIterations;
 	float stepKrylovIterations;
 	int maxNewtonIterations;
+	double3 gravity;
 
 	// spike stuff
 	int partitions;
