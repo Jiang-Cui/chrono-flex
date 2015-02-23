@@ -671,6 +671,15 @@ int ANCFSystem::initializeSystem() {
 	return 0;
 }
 
+int ANCFSystem::transferState(ANCFSystem* dst) {
+  dst->pnew_d = p_d;
+  dst->p_d = p_d;
+  dst->v_d = v_d;
+  dst->anew_d = a_d;
+
+  return 0;
+}
+
 int ANCFSystem::DoTimeStep() {
 	cudaEvent_t start, stop;
 	cudaEventCreate(&start);

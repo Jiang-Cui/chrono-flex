@@ -117,6 +117,7 @@ void renderSceneAll(){
 
       sys[i]->DoTimeStep();
     }
+    if(sys[0]->timeIndex%200 == 0) sys[0]->transferState(sys[1]);
   }
 }
 
