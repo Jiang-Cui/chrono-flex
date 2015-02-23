@@ -106,28 +106,20 @@ void renderSceneAll(){
     //if(sys->timeIndex%10==0)
     drawAll();
 
-    // Force a preconditioner update if needed
-    if ((sys[workingThread]->preconditionerUpdateModulus > 0) && (sys[workingThread]->timeIndex % sys[workingThread]->preconditionerUpdateModulus == 0)) {
-      //mySolver->update(lhs.values);
-      delete sys[workingThread]->mySolver;
-      sys[workingThread]->mySolver = new SpikeSolver(sys[workingThread]->partitions, sys[workingThread]->solverOptions);
-      sys[workingThread]->mySolver->setup(sys[workingThread]->lhs);
-      sys[workingThread]->precUpdated = true;
-      printf("Preconditioner updated (step condition)!\n");
-    }
+    // Figure out the non-working thread (based on working thread)
+    int nonWorkingThread = 1;
+    if(workingThread) nonWorkingThread = 0;
 
+    // The working thread will perform the time step while the non-working thread updates the preconditioner
     sys[workingThread]->DoTimeStep();
+    if(!sys[nonWorkingThread]->precUpdated) sys[nonWorkingThread]->updatePreconditioner();
 
+    // When the preconditioner is ready, switch the jobs of the systems
     if(sys[workingThread]->timeIndex%200 == 0) {
-      if(workingThread) {
-        workingThread = 0;
-        sys[1]->transferState(sys[0]);
-      }
-      else {
-        workingThread = 1;
-        sys[0]->transferState(sys[1]);
-      }
+      sys[workingThread]->transferState(sys[nonWorkingThread]);
+      workingThread = nonWorkingThread;
     }
+
   }
 }
 

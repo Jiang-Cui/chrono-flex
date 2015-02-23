@@ -318,6 +318,7 @@ public:
 	int getLeftHandSide(DeviceValueArrayView x);
 	int DoTimeStep();
 	int transferState(ANCFSystem* dst);
+	int updatePreconditioner();
 	int solve_cg();
 	int solve_bicgstab();
 	float3 getXYZPosition(int elementIndex, double xi);
