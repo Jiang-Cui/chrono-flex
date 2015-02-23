@@ -676,6 +676,8 @@ int ANCFSystem::transferState(ANCFSystem* dst) {
   dst->p_d = p_d;
   dst->v_d = v_d;
   dst->anew_d = a_d;
+  dst->time = time;
+  dst->timeIndex = timeIndex;
 
   return 0;
 }

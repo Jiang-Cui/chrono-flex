@@ -8,6 +8,7 @@ bool updateDraw = 1;
 bool showSphere = 1;
 
 // Create the system (placed outside of main so it is available to the OpenGL code)
+int workingThread = 0;
 const int numSystems = 2;
 ANCFSystem* sys[numSystems];
 
@@ -104,20 +105,29 @@ void renderSceneAll(){
   if(OGL){
     //if(sys->timeIndex%10==0)
     drawAll();
-    for(int i=0; i < numSystems; i++) {
-      // Force a preconditioner update if needed
-      if ((sys[i]->preconditionerUpdateModulus > 0) && (sys[i]->timeIndex % sys[i]->preconditionerUpdateModulus == 0)) {
-        //mySolver->update(lhs.values);
-        delete sys[i]->mySolver;
-        sys[i]->mySolver = new SpikeSolver(sys[i]->partitions, sys[i]->solverOptions);
-        sys[i]->mySolver->setup(sys[i]->lhs);
-        sys[i]->precUpdated = true;
-        printf("Preconditioner updated (step condition)!\n");
-      }
 
-      sys[i]->DoTimeStep();
+    // Force a preconditioner update if needed
+    if ((sys[workingThread]->preconditionerUpdateModulus > 0) && (sys[workingThread]->timeIndex % sys[workingThread]->preconditionerUpdateModulus == 0)) {
+      //mySolver->update(lhs.values);
+      delete sys[workingThread]->mySolver;
+      sys[workingThread]->mySolver = new SpikeSolver(sys[workingThread]->partitions, sys[workingThread]->solverOptions);
+      sys[workingThread]->mySolver->setup(sys[workingThread]->lhs);
+      sys[workingThread]->precUpdated = true;
+      printf("Preconditioner updated (step condition)!\n");
     }
-    if(sys[0]->timeIndex%200 == 0) sys[0]->transferState(sys[1]);
+
+    sys[workingThread]->DoTimeStep();
+
+    if(sys[workingThread]->timeIndex%200 == 0) {
+      if(workingThread) {
+        workingThread = 0;
+        sys[1]->transferState(sys[0]);
+      }
+      else {
+        workingThread = 1;
+        sys[0]->transferState(sys[1]);
+      }
+    }
   }
 }
 
@@ -213,7 +223,6 @@ int main(int argc, char** argv)
       data_folder = argv[6];
     }
   }
-  sys[1]->gravity = make_double3(0,9.81,0); // Invert gravity so we can see the difference between the systems!
 
   /////////////////////////////////////////////////////////////////////////
   //
