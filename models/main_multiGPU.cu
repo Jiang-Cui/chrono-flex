@@ -25,7 +25,7 @@ void changeSize(int w, int h) {
   gluPerspective(45,ratio,.1,1000);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
-  gluLookAt(0.0,0.0,0.0,		0.0,0.0,-7,		0.0f,1.0f,0.0f);
+  gluLookAt(0.0,0.0,0.0,    0.0,0.0,-7,   0.0f,1.0f,0.0f);
 }
 
 void initScene(){
@@ -176,6 +176,7 @@ int main(int argc, char** argv)
 #endif
   visualize = false;
 
+  double hh = 1e-3;
   int numElementsPerSide = 4;
   double E = 2e7;
   double t_end = 5.0;
@@ -188,10 +189,19 @@ int main(int argc, char** argv)
   double nu = .3;
   string data_folder = "./garbage";
 
-  for(int sysIndex = 0; sysIndex < numSystems; sysIndex++) {
-    sys[sysIndex] = new ANCFSystem();
+  // Set up variables for multi-GPU
+  omp_set_num_threads(numSystems);
+  workingThread = 0;
+  omp_lock_t g_lock;
+  omp_init_lock(&g_lock);
+  bool update_done = false;
+  bool matrix_updated = false;
+  bool system_changed = false;
 
-    sys[sysIndex]->setTimeStep(1e-3, 1e-10);
+  for(int sysIndex = 0; sysIndex < numSystems; sysIndex++) {
+    sys[sysIndex] = new ANCFSystem(sysIndex);
+
+    sys[sysIndex]->setTimeStep(hh, 1e-10);
     sys[sysIndex]->setMaxNewtonIterations(20);
     sys[sysIndex]->setMaxKrylovIterations(5000);
     sys[sysIndex]->numContactPoints = 30;
@@ -336,7 +346,7 @@ int main(int argc, char** argv)
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
     glutInitWindowPosition(0,0);
-    glutInitWindowSize(1024	,512);
+    glutInitWindowSize(1024 ,512);
     glutCreateWindow("MAIN");
     glutDisplayFunc(renderSceneAll);
     glutIdleFunc(renderSceneAll);
@@ -357,51 +367,90 @@ int main(int argc, char** argv)
 
   // if you don't want to visualize, then output the data
   int fileIndex = 0;
-  while(sys[workingThread]->time < t_end)
+  double time = 0;
+  int timeIndex = 0;
+#pragma omp parallel shared(time, timeIndex, fileIndex, t_end, workingThread, g_lock, update_done, matrix_updated, system_changed)
   {
-    // Figure out the non-working thread (based on working thread)
-    int nonWorkingThread = 1;
-    if(workingThread) nonWorkingThread = 0;
-
-    // Output POV-Ray files
-    if(sys[workingThread]->getTimeIndex()%outputInterval==0)
+    int tid = omp_get_thread_num();
+    while(true)
     {
-      stringstream ss0;
-      ss0 << data_folder << "/data0_" << fileIndex << ".dat";
-      sys[0]->writeToFile(ss0.str());
+      int loc_working_thread;
+      omp_set_lock(&g_lock);
+      loc_working_thread = workingThread;
+      omp_unset_lock(&g_lock);
 
-      stringstream ss1;
-      ss1 << data_folder << "/data1_" << fileIndex << ".dat";
-      sys[1]->writeToFile(ss1.str());
+      if (tid == loc_working_thread) {
+        // Output POV-Ray data
+        if(timeIndex%outputInterval==0)
+        {
+          stringstream ss;
+          ss << data_folder << "/data_" << fileIndex << ".dat";
+          sys[tid]->writeToFile(ss.str());
 
-      fileIndex++;
-    }
+          fileIndex++;
+        }
 
-    // The working thread will perform the time step while the non-working thread updates the preconditioner
-    sys[workingThread]->DoTimeStep();
-    if(!sys[nonWorkingThread]->precUpdated) sys[nonWorkingThread]->updatePreconditioner();
+        // The working thread should solve the problem
+        sys[tid]->DoTimeStep();
+        matrix_updated = true;
 
-    // Output timing information
-    ofile << sys[workingThread]->time                 << ", "
-        << sys[workingThread]->stepTime             << ", "
-        << sys[workingThread]->stepNewtonIterations << ", "
-        << sys[workingThread]->stepKrylovIterations << ", "
-        << sys[workingThread]->precUpdated          << " ,     ";
-    for (size_t i = 0; i < sys[workingThread]->stepNewtonIterations; ++i)
-      ofile << sys[workingThread]->spikeSolveTime[i] << ", " << sys[workingThread]->spikeNumIter[i] << ",     ";
-    ofile << endl;
+        // Output timing information
+        ofile << time                         << ", "
+            << sys[tid]->stepTime             << ", "
+            << sys[tid]->stepNewtonIterations << ", "
+            << sys[tid]->stepKrylovIterations << ", "
+            << sys[tid]->precUpdated          << " ,     ";
+        for (size_t i = 0; i < sys[tid]->stepNewtonIterations; ++i)
+          ofile << sys[tid]->spikeSolveTime[i] << ", " << sys[tid]->spikeNumIter[i] << ",     ";
+        ofile << endl;
 
-    // When the preconditioner is ready, switch the jobs of the systems
-    if(sys[workingThread]->timeIndex%200 == 0) {
-      cout << "Swap the threads" << endl;
-      sys[workingThread]->transferState(sys[nonWorkingThread]);
-      workingThread = nonWorkingThread;
+        time+=hh;
+        timeIndex++;
+      }
+      else if (tid == 1 - loc_working_thread && matrix_updated) {
+        // The non-working thread should update the preconditioner
+        sys[tid]->updatePreconditioner();
+
+        omp_set_lock(&g_lock);
+        workingThread = 1 - workingThread;
+        update_done = true;
+        omp_unset_lock(&g_lock);
+      }
+
+      // If the preconditioner has been updated, or the working thread fails to solve the problem, do a switch
+      if (update_done) {
+
+#pragma omp barrier
+        if (time >= t_end) break;
+
+        if (!system_changed) {
+#pragma omp barrier
+#pragma omp single
+          {
+            system_changed = true;
+            workingThread = 0;
+            update_done    = false;
+            matrix_updated = false;
+          }
+
+          if(tid == 0) {
+            sys[0]->updatePreconditioner();
+          }
+          else {
+#pragma omp single
+            {
+              update_done = false;
+              sys[loc_working_thread]->transferState(sys[1-loc_working_thread]);
+            }
+          }
+        }
+
+      }
+
     }
   }
 
-  printf("Total time to simulate: %f [s]\n",sys[workingThread]->timeToSimulate);
   ofile.close();
 
   return 0;
 }
-
