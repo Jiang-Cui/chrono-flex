@@ -396,6 +396,7 @@ int main(int argc, char** argv)
 
         // Output timing information
         ofile << time                         << ", "
+            << sys[tid]->deviceIndex          << ", "
             << sys[tid]->stepTime             << ", "
             << sys[tid]->stepNewtonIterations << ", "
             << sys[tid]->stepKrylovIterations << ", "
