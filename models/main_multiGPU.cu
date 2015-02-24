@@ -408,12 +408,12 @@ int main(int argc, char** argv)
         time+=hh;
         timeIndex++;
       }
-      else if (tid == 1 - loc_working_thread && matrix_updated) {
+      else if (tid == abs(1 - loc_working_thread) && matrix_updated) {
         // The non-working thread should update the preconditioner
         sys[tid]->updatePreconditioner();
 
         omp_set_lock(&g_lock);
-        workingThread = 1 - workingThread;
+        workingThread = abs(1 - workingThread);
         update_done = true;
         omp_unset_lock(&g_lock);
       }
@@ -441,7 +441,7 @@ int main(int argc, char** argv)
 #pragma omp single
             {
               update_done = false;
-              sys[loc_working_thread]->transferState(sys[1-loc_working_thread]);
+              sys[loc_working_thread]->transferState(sys[abs(1-loc_working_thread)]);
             }
           }
         }
