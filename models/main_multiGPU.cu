@@ -182,7 +182,7 @@ int main(int argc, char** argv)
   double t_end = 5.0;
   int    precUpdateInterval = -1;
   float  precMaxKrylov = -1;
-  int    outputInterval = 100;
+  int    outputInterval = 10;
   double length = 1;
   double r = .02;
   double rho = 2200;
