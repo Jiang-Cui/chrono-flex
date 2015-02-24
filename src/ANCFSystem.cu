@@ -988,9 +988,6 @@ int ANCFSystem::saveLHS() {
 
 int ANCFSystem::writeToFile(string fileName) {
   cudaSetDevice(deviceIndex);
-  //char filename1[100];
-  //sprintf(filename1, "./posData/lhs%d.dat", fileIndex);
-  //cusp::io::write_matrix_market_file(lhs, filename1);
 
   posFile.open(fileName.c_str());
   p_h = p_d;
@@ -998,22 +995,15 @@ int ANCFSystem::writeToFile(string fileName) {
   double* pos;
   double l;
   double r;
-  posFile << elements.size() << "," << endl;
-//  float3 posPart;
-//  for(int i=0;i<particles.size();i++)
-//  {
-//    r = particles[i].getRadius();
-//    posPart = getXYZPositionParticle(i);
-//    posFile << r << ", " << posPart.x << ", " << posPart.y << ", " << posPart.z << "," << endl;
-//  }
+  posFile << elements.size() << ", " << deviceIndex << ", " << endl;
   for (int i = 0; i < elements.size(); i++) {
     l = elements[i].getLength_l();
     r = elements[i].getRadius();
     pos = &posAll[12 * i];
-    posFile << r << "," << l;
+    posFile << r << ", " << l;
     for (int i = 0; i < 12; i++)
-      posFile << "," << pos[i];
-    posFile << "," << endl;
+      posFile << ", " << pos[i];
+    posFile << ", " << endl;
   }
   posFile.close();
 
