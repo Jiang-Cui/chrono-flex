@@ -41,6 +41,8 @@ ANCFSystem::ANCFSystem()
 	setTimeStep(1e-3);
 	maxNewtonIterations = 20;
 	gravity = make_double3(0,-9.81,0);
+	deviceIndex = 0;
+	cudaSetDevice(deviceIndex);
 
 	// spike stuff
 	partitions = 1;
@@ -96,8 +98,73 @@ ANCFSystem::ANCFSystem()
 	resultsFile3.open(filename3);
 }
 
+ANCFSystem::ANCFSystem(int deviceIndex)
+{
+  // Set default solver parameters
+  setAlpha_HHT(-0.1);
+  setTimeStep(1e-3);
+  maxNewtonIterations = 20;
+  gravity = make_double3(0,-9.81,0);
+  this->deviceIndex = deviceIndex;
+  cudaSetDevice(deviceIndex);
+
+  // spike stuff
+  partitions = 1;
+  solverOptions.safeFactorization = true;
+  solverOptions.trackReordering = true;
+  solverOptions.maxNumIterations = 5000;
+  preconditionerUpdateModulus = -1; // the preconditioner updates every ___ time steps
+  preconditionerMaxKrylovIterations = -1; // the preconditioner updates if Krylov iterations are greater than ____ iterations
+  // end spike stuff
+
+  this->timeIndex = 0;
+  this->time = 0;
+  timeToSimulate = 0;
+  simTime = 0;
+  fullJacobian = 1;
+
+  wt3.push_back(5.0 / 9.0);
+  wt3.push_back(8.0 / 9.0);
+  wt3.push_back(5.0 / 9.0);
+
+  pt3.push_back(-sqrt(3.0 / 5.0));
+  pt3.push_back(0.0);
+  pt3.push_back(sqrt(3.0 / 5.0));
+
+  wt5.push_back((322. - 13. * sqrt(70.)) / 900.);
+  wt5.push_back((322. + 13. * sqrt(70.)) / 900.);
+  wt5.push_back(128. / 225.);
+  wt5.push_back((322. + 13. * sqrt(70.)) / 900.);
+  wt5.push_back((322. - 13. * sqrt(70.)) / 900.);
+
+  pt5.push_back(-(sqrt(5. + 2. * sqrt(10. / 7.))) / 3.);
+  pt5.push_back(-(sqrt(5. - 2. * sqrt(10. / 7.))) / 3.);
+  pt5.push_back(0.);
+  pt5.push_back((sqrt(5. - 2. * sqrt(10. / 7.))) / 3.);
+  pt5.push_back((sqrt(5. + 2. * sqrt(10. / 7.))) / 3.);
+
+  numCollisions = 0;
+  numCollisionsSphere = 0;
+  numContactPoints = 5;
+  coefRestitution = .3;
+  frictionCoef = .3;
+  fileIndex = 0;
+
+  // set up position files
+  char filename1[100];
+  char filename2[100];
+  char filename3[100];
+  sprintf(filename1, "position.dat");
+  resultsFile1.open(filename1);
+  sprintf(filename2, "energy.dat");
+  resultsFile2.open(filename2);
+  sprintf(filename3, "reactions.dat");
+  resultsFile3.open(filename3);
+}
+
 void ANCFSystem::setSolverType(int solverType)
 {
+  cudaSetDevice(deviceIndex);
 	switch(solverType) {
 	case 0:
 		solverOptions.solverType = spike::BiCGStab;
@@ -116,10 +183,13 @@ void ANCFSystem::setSolverType(int solverType)
 
 void ANCFSystem::setPrecondType(int useSpike)
 {
+  cudaSetDevice(deviceIndex);
 	solverOptions.precondType = useSpike ? spike::Spike : spike::None;
 }
 
 void ANCFSystem::setAlpha_HHT(double alpha) {
+  cudaSetDevice(deviceIndex);
+
 	// should be greater than -.3, usually set to -.1
 	alphaHHT = alpha;
 	betaHHT = (1 - alphaHHT) * (1 - alphaHHT) * .25;
@@ -129,6 +199,8 @@ void ANCFSystem::setAlpha_HHT(double alpha) {
 void ANCFSystem::setTimeStep(double step_size,
                              double precision)
 {
+  cudaSetDevice(deviceIndex);
+
 	h = step_size;
 
 	// Set tolerance for Newton iteration based on the precision in positions
@@ -153,6 +225,8 @@ void ANCFSystem::printSolverParams()
 
 
 int ANCFSystem::addParticle(Particle* particle) {
+  cudaSetDevice(deviceIndex);
+
 	//add the element
 	particle->setParticleIndex(particles.size());
 	this->particles.push_back(*particle);
@@ -187,6 +261,8 @@ int ANCFSystem::addParticle(Particle* particle) {
 }
 
 int ANCFSystem::addElement(Element* element) {
+  cudaSetDevice(deviceIndex);
+
 	//add the element
 	element->setElementIndex(elements.size());
 	this->elements.push_back(*element);
@@ -267,6 +343,8 @@ int ANCFSystem::addElement(Element* element) {
 }
 
 int ANCFSystem::addForce(Element* element, double xi, float3 force) {
+  cudaSetDevice(deviceIndex);
+
 	int index = element->getElementIndex();
 	int l = element->getLength_l();
 
@@ -291,12 +369,16 @@ int ANCFSystem::addForce(Element* element, double xi, float3 force) {
 }
 
 int ANCFSystem::clearAppliedForces() {
+  cudaSetDevice(deviceIndex);
+
 	thrust::fill(fapp_d.begin(), fapp_d.end(), 0.0); //Clear internal forces
 	return 0;
 }
 
 int ANCFSystem::updatePhiq() // used in Newton iteration, nice to keep it separate (but not memory efficient) - only needs to be done once (linear constraints)
 {
+  cudaSetDevice(deviceIndex);
+
 	for (int i = 0; i < constraints.size(); i++) {
 		Constraint constraint = constraints[i];
 
@@ -350,6 +432,7 @@ __global__ void calculateRHSlower(double* phi, double* p, double* phi0,
 }
 
 int ANCFSystem::updatePhi() {
+  cudaSetDevice(deviceIndex);
 	calculateRHSlower<<<dimGridConstraint,dimBlockConstraint>>>(CASTD1(phi_d), CASTD1(pnew_d), CASTD1(phi0_d), 1.0/(betaHHT*h*h), CASTI2(constraintPairs_d), constraints.size());
 
 	return 0;
@@ -378,12 +461,14 @@ __global__ void updateParticleDynamics_GPU(double h, double* a, double* v,
 }
 
 int ANCFSystem::updateParticleDynamics() {
+  cudaSetDevice(deviceIndex);
 	updateParticleDynamics_GPU<<<dimGridParticles,dimBlockParticles>>>(h,CASTD1(aParticle_d), CASTD1(vParticle_d), CASTD1(pParticle_d), CASTD1(fParticle_d), CASTMP(pMaterials_d), gravity, particles.size());
 
 	return 0;
 }
 
 int ANCFSystem::calculateInitialPhi() {
+  cudaSetDevice(deviceIndex);
 	for (int i = 0; i < constraints.size(); i++)
 		phi0_h.push_back(0);
 	for (int i = 0; i < constraints.size(); i++) {
@@ -400,6 +485,8 @@ int ANCFSystem::calculateInitialPhi() {
 }
 
 int ANCFSystem::initializeDevice() {
+  cudaSetDevice(deviceIndex);
+
 	pMaterials_d = pMaterials_h;
 	pParticle_d = pParticle_h;
 	vParticle_d = vParticle_h;
@@ -562,6 +649,8 @@ int ANCFSystem::initializeDevice() {
 }
 
 int ANCFSystem::initializeSystem() {
+  cudaSetDevice(deviceIndex);
+
 	ANCFSystem::updatePhiq();
 	ANCFSystem::calculateInitialPhi();
 
@@ -683,6 +772,7 @@ int ANCFSystem::transferState(ANCFSystem* dst) {
 }
 
 int ANCFSystem::updatePreconditioner() {
+  cudaSetDevice(deviceIndex);
   delete mySolver;
   mySolver = new SpikeSolver(partitions, solverOptions);
   mySolver->setup(lhs);
@@ -692,6 +782,8 @@ int ANCFSystem::updatePreconditioner() {
 }
 
 int ANCFSystem::DoTimeStep() {
+  cudaSetDevice(deviceIndex);
+
 	cudaEvent_t start, stop;
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
@@ -818,6 +910,8 @@ int ANCFSystem::DoTimeStep() {
 }
 
 float3 ANCFSystem::getXYZPosition(int elementIndex, double xi) {
+  cudaSetDevice(deviceIndex);
+
 	double a = elements[elementIndex].getLength_l();
 	double* p = CASTD1(p_h);
 	p = &p[12 * elementIndex];
@@ -840,6 +934,8 @@ float3 ANCFSystem::getXYZPosition(int elementIndex, double xi) {
 }
 
 float3 ANCFSystem::getXYZVelocity(int elementIndex, double xi) {
+  cudaSetDevice(deviceIndex);
+
 	double a = elements[elementIndex].getLength_l();
 	double* p = CASTD1(v_h);
 	p = &p[12 * elementIndex];
@@ -862,16 +958,22 @@ float3 ANCFSystem::getXYZVelocity(int elementIndex, double xi) {
 }
 
 float3 ANCFSystem::getXYZPositionParticle(int index) {
+  cudaSetDevice(deviceIndex);
+
 	return make_float3(pParticle_h[3 * index], pParticle_h[3 * index + 1],
 			pParticle_h[3 * index + 2]);
 }
 
 float3 ANCFSystem::getXYZVelocityParticle(int index) {
+  cudaSetDevice(deviceIndex);
+
 	return make_float3(vParticle_h[3 * index], vParticle_h[3 * index + 1],
 			vParticle_h[3 * index + 2]);
 }
 
 int ANCFSystem::saveLHS() {
+  cudaSetDevice(deviceIndex);
+
 	posFile.open("../lhs.dat");
 	posFile << "symmetric" << endl;
 	posFile << anew_h.size() << " " << anew_h.size() << " " << lhsI_h.size()
@@ -885,6 +987,7 @@ int ANCFSystem::saveLHS() {
 }
 
 int ANCFSystem::writeToFile(string fileName) {
+  cudaSetDevice(deviceIndex);
 	//char filename1[100];
 	//sprintf(filename1, "./posData/lhs%d.dat", fileIndex);
 	//cusp::io::write_matrix_market_file(lhs, filename1);

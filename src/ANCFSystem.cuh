@@ -75,6 +75,7 @@ public:
 	float stepKrylovIterations;
 	int maxNewtonIterations;
 	double3 gravity;
+	int deviceIndex;
 
 	// spike stuff
 	int partitions;
@@ -273,6 +274,7 @@ public:
 public:
 
 	ANCFSystem();
+	ANCFSystem(int deviceIndex);
 	vector<Element> elements;
 	vector<Constraint> constraints;
 	thrust::host_vector<Material> materials;

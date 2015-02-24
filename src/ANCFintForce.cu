@@ -461,6 +461,8 @@ __global__ void addMass(double* stiffness, Material* materials, int numElements)
 
 int ANCFSystem::resetLeftHandSideMatrix()
 {
+  cudaSetDevice(deviceIndex);
+
 	// populate the lhs with only the mass, must be done before updating internal forces!
 	thrust::fill_n(lhs_d.begin(),elements.size()*12*12,0.0); //Clear the matrix
 	addMass<<<dimGridElement,dimBlockElement>>>(CASTD1(lhs_d),CASTM1(materials_d),elements.size()); // add terms from mass
@@ -469,6 +471,7 @@ int ANCFSystem::resetLeftHandSideMatrix()
 
 int ANCFSystem::updateInternalForces()
 {
+  cudaSetDevice(deviceIndex);
 	int updateLhs = 1;
 	thrust::fill(fint_d.begin(),fint_d.end(),0.0); //Clear internal forces
 
