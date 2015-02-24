@@ -381,13 +381,7 @@ int main(int argc, char** argv)
     sys[workingThread]->DoTimeStep();
     if(!sys[nonWorkingThread]->precUpdated) sys[nonWorkingThread]->updatePreconditioner();
 
-    // When the preconditioner is ready, switch the jobs of the systems
-    if(sys[workingThread]->timeIndex%200 == 0) {
-      cout << "Swap the threads" << endl;
-      sys[workingThread]->transferState(sys[nonWorkingThread]);
-      workingThread = nonWorkingThread;
-    }
-
+    // Output timing information
     ofile << sys[workingThread]->time                 << ", "
         << sys[workingThread]->stepTime             << ", "
         << sys[workingThread]->stepNewtonIterations << ", "
@@ -396,6 +390,13 @@ int main(int argc, char** argv)
     for (size_t i = 0; i < sys[workingThread]->stepNewtonIterations; ++i)
       ofile << sys[workingThread]->spikeSolveTime[i] << ", " << sys[workingThread]->spikeNumIter[i] << ",     ";
     ofile << endl;
+
+    // When the preconditioner is ready, switch the jobs of the systems
+    if(sys[workingThread]->timeIndex%200 == 0) {
+      cout << "Swap the threads" << endl;
+      sys[workingThread]->transferState(sys[nonWorkingThread]);
+      workingThread = nonWorkingThread;
+    }
   }
 
   printf("Total time to simulate: %f [s]\n",sys[workingThread]->timeToSimulate);
