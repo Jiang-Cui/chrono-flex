@@ -174,6 +174,7 @@ int main(int argc, char** argv)
 #ifdef WITH_GLUT
   bool visualize = true;
 #endif
+  visualize = false;
 
   int numElementsPerSide = 4;
   double E = 2e7;
@@ -348,7 +349,7 @@ int main(int argc, char** argv)
     glutMainLoop();
   }
 #endif
-/*
+
   stringstream ss_m;
   ss_m << data_folder << "/" << "timing_" << atoi(argv[1]) << "_" << atoi(argv[2]) << "_" << atoi(argv[3]) << "_" << atoi(argv[4]) << "_" << atof(argv[5]) << ".txt";
   string timing_file_name = ss_m.str();
@@ -356,40 +357,50 @@ int main(int argc, char** argv)
 
   // if you don't want to visualize, then output the data
   int fileIndex = 0;
-  while(sys->time < t_end)
+  while(sys[workingThread]->time < t_end)
   {
-    if(sys->getTimeIndex()%outputInterval==0)
+    // Figure out the non-working thread (based on working thread)
+    int nonWorkingThread = 1;
+    if(workingThread) nonWorkingThread = 0;
+
+    // Output POV-Ray files
+    if(sys[workingThread]->getTimeIndex()%outputInterval==0)
     {
-      stringstream ss;
-      //cout << "Frame: " << fileIndex << endl;
-      ss << data_folder << "/" << fileIndex << ".txt";
-      sys->writeToFile(ss.str());
+      stringstream ss0;
+      ss0 << data_folder << "/data0_" << fileIndex << ".dat";
+      sys[0]->writeToFile(ss0.str());
+
+      stringstream ss1;
+      ss1 << data_folder << "/data1_" << fileIndex << ".dat";
+      sys[1]->writeToFile(ss1.str());
+
       fileIndex++;
     }
 
-    // Force a preconditioner update if needed
-    if ((sys->preconditionerUpdateModulus > 0) && (sys->timeIndex % sys->preconditionerUpdateModulus == 0)) {
-      //mySolver->update(lhs.values);
-      delete sys->mySolver;
-      sys->mySolver = new SpikeSolver(sys->partitions, sys->solverOptions);
-      sys->mySolver->setup(sys->lhs);
-      sys->precUpdated = true;
-      printf("Preconditioner updated (step condition)!\n");
+    // The working thread will perform the time step while the non-working thread updates the preconditioner
+    sys[workingThread]->DoTimeStep();
+    if(!sys[nonWorkingThread]->precUpdated) sys[nonWorkingThread]->updatePreconditioner();
+
+    // When the preconditioner is ready, switch the jobs of the systems
+    if(sys[workingThread]->timeIndex%200 == 0) {
+      cout << "Swap the threads" << endl;
+      sys[workingThread]->transferState(sys[nonWorkingThread]);
+      workingThread = nonWorkingThread;
     }
 
-    sys->DoTimeStep();
-    ofile << sys->time                 << ", "
-        << sys->stepTime             << ", "
-        << sys->stepNewtonIterations << ", "
-        << sys->stepKrylovIterations << ", "
-        << sys->precUpdated          << " ,     ";
-    for (size_t i = 0; i < sys->stepNewtonIterations; ++i)
-      ofile << sys->spikeSolveTime[i] << ", " << sys->spikeNumIter[i] << ",     ";
+    ofile << sys[workingThread]->time                 << ", "
+        << sys[workingThread]->stepTime             << ", "
+        << sys[workingThread]->stepNewtonIterations << ", "
+        << sys[workingThread]->stepKrylovIterations << ", "
+        << sys[workingThread]->precUpdated          << " ,     ";
+    for (size_t i = 0; i < sys[workingThread]->stepNewtonIterations; ++i)
+      ofile << sys[workingThread]->spikeSolveTime[i] << ", " << sys[workingThread]->spikeNumIter[i] << ",     ";
     ofile << endl;
   }
-  printf("Total time to simulate: %f [s]\n",sys->timeToSimulate);
+
+  printf("Total time to simulate: %f [s]\n",sys[workingThread]->timeToSimulate);
   ofile.close();
-*/
+
   return 0;
 }
 
