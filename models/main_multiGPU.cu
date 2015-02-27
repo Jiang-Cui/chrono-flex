@@ -195,8 +195,18 @@ int main(int argc, char** argv)
   omp_lock_t g_lock;
   omp_init_lock(&g_lock);
 
+  // Check the number of devices
+  int deviceCount;
+  cudaGetDeviceCount(&deviceCount);
+  printf("CUDA Device Query...\n");
+  printf("There are %d CUDA devices.\n", deviceCount);
+
   for(int sysIndex = 0; sysIndex < numSystems; sysIndex++) {
-    sys[sysIndex] = new ANCFSystem();//sysIndex);
+    if(deviceCount>1) {
+      sys[sysIndex] = new ANCFSystem(sysIndex);
+    } else {
+      sys[sysIndex] = new ANCFSystem();
+    }
 
     sys[sysIndex]->setTimeStep(hh, 1e-10);
     sys[sysIndex]->setMaxNewtonIterations(20);
