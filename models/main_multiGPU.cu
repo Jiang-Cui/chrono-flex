@@ -194,12 +194,9 @@ int main(int argc, char** argv)
   workingThread = 0;
   omp_lock_t g_lock;
   omp_init_lock(&g_lock);
-  bool update_done = false;
-  bool matrix_updated = false;
-  bool system_changed = false;
 
   for(int sysIndex = 0; sysIndex < numSystems; sysIndex++) {
-    sys[sysIndex] = new ANCFSystem(sysIndex);
+    sys[sysIndex] = new ANCFSystem();//sysIndex);
 
     sys[sysIndex]->setTimeStep(hh, 1e-10);
     sys[sysIndex]->setMaxNewtonIterations(20);
@@ -367,9 +364,7 @@ int main(int argc, char** argv)
 
   // if you don't want to visualize, then output the data
   int fileIndex = 0;
-  double time = 0;
-  int timeIndex = 0;
-#pragma omp parallel shared(time, timeIndex, fileIndex, t_end, workingThread, g_lock, update_done, matrix_updated, system_changed)
+#pragma omp parallel shared(workingThread, g_lock)
   {
     int tid = omp_get_thread_num();
     while(true)
@@ -381,7 +376,7 @@ int main(int argc, char** argv)
 
       if (tid == loc_working_thread) {
         // Output POV-Ray data
-        if(timeIndex%outputInterval==0)
+        if(sys[tid]->timeIndex%outputInterval==0)
         {
           stringstream ss;
           ss << data_folder << "/data_" << fileIndex << ".dat";
@@ -391,11 +386,11 @@ int main(int argc, char** argv)
         }
 
         // The working thread should solve the problem
+        cout << "SYSTEM " << tid << " UPDATE TIME STEP" << "(TIME: " << sys[tid]->time << ")" << endl;
         sys[tid]->DoTimeStep();
-        matrix_updated = true;
 
         // Output timing information
-        ofile << time                         << ", "
+        ofile << sys[tid]->time                         << ", "
             << sys[tid]->deviceIndex          << ", "
             << sys[tid]->stepTime             << ", "
             << sys[tid]->stepNewtonIterations << ", "
@@ -404,50 +399,32 @@ int main(int argc, char** argv)
         for (size_t i = 0; i < sys[tid]->stepNewtonIterations; ++i)
           ofile << sys[tid]->spikeSolveTime[i] << ", " << sys[tid]->spikeNumIter[i] << ",     ";
         ofile << endl;
-
-        time+=hh;
-        timeIndex++;
       }
-      else if (tid == abs(1 - loc_working_thread) && matrix_updated) {
+
+      else if (tid == abs(1 - loc_working_thread)) {
         // The non-working thread should update the preconditioner
+        cout << "SYSTEM " << tid << " UPDATE PRECONDITIONER... " << endl;
         sys[tid]->updatePreconditioner();
 
         omp_set_lock(&g_lock);
         workingThread = abs(1 - workingThread);
-        update_done = true;
+        cout << "PRECONDITIONER UPDATE COMPLETE (" << sys[tid]->precUpdated << ")" << endl;
         omp_unset_lock(&g_lock);
       }
 
       // If the preconditioner has been updated, or the working thread fails to solve the problem, do a switch
-      if (update_done) {
+      if (sys[abs(1-loc_working_thread)]->precUpdated) {
 
 #pragma omp barrier
-        if (time >= t_end) break;
+        if (sys[loc_working_thread]->time >= t_end) break;
 
-        if (!system_changed) {
-#pragma omp barrier
 #pragma omp single
-          {
-            system_changed = true;
-            workingThread = 0;
-            update_done    = false;
-            matrix_updated = false;
-          }
-
-          if(tid == 0) {
-            sys[0]->updatePreconditioner();
-          }
-          else {
-#pragma omp single
-            {
-              update_done = false;
-              sys[loc_working_thread]->transferState(sys[abs(1-loc_working_thread)]);
-            }
-          }
+        {
+          cout << "SWITCH SYSTEM " << loc_working_thread << " -> " << abs(1-loc_working_thread) << "... ";
+          sys[loc_working_thread]->transferState(sys[abs(1-loc_working_thread)]);
+          cout << "SWITCH COMPLETE." << endl;
         }
-
       }
-
     }
   }
 

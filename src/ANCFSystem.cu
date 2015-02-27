@@ -777,6 +777,7 @@ int ANCFSystem::updatePreconditioner() {
   mySolver = new SpikeSolver(partitions, solverOptions);
   mySolver->setup(lhs);
   precUpdated = true;
+  //printf("%f (Device %d): Update preconditioner\n", time, deviceIndex);
 
   return 0;
 }
@@ -865,8 +866,8 @@ int ANCFSystem::DoTimeStep() {
     // Calculate infinity norm of the correction and check for convergence
     double delta_nrm = cusp::blas::nrmmax(delta);
 
-    printf("         Krylov solver: %8.2f ms    %.2f iterations     ||delta||_inf = %e\n",
-      stats.timeSolve, stats.numIterations, delta_nrm);
+    //printf("         Krylov solver: %8.2f ms    %.2f iterations     ||delta||_inf = %e\n",
+    //  stats.timeSolve, stats.numIterations, delta_nrm);
 
     if (delta_nrm <= tol)
       break;
@@ -898,13 +899,11 @@ int ANCFSystem::DoTimeStep() {
 //  sprintf(filename1, "./data/rhs%d.txt",timeIndex);
 //  cusp::io::write_matrix_market_file(eAll, filename1);
 
+  //printf("%f (Device %d), Elapsed time = %8.2f ms, Newton = %2d, Ave. Krylov Per Newton = %.2f\n",
+  //       time, deviceIndex, elapsedTime, stepNewtonIterations, avgKrylov);
+
   time += h;
   timeIndex++;
-
-
-  printf("%f, Elapsed time = %8.2f ms, Newton = %2d, Ave. Krylov Per Newton = %.2f\n",
-         time, elapsedTime, stepNewtonIterations, avgKrylov);
-
 
   return 0;
 }
