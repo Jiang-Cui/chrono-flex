@@ -182,7 +182,7 @@ int main(int argc, char** argv)
   double t_end = 5.0;
   int    precUpdateInterval = -1;
   float  precMaxKrylov = -1;
-  int    outputInterval = 10;
+  int    outputInterval = 1;
   double length = 1;
   double r = .02;
   double rho = 2200;
@@ -205,7 +205,7 @@ int main(int argc, char** argv)
     if(deviceCount>1) {
       sys[sysIndex] = new ANCFSystem(sysIndex);
     } else {
-      sys[sysIndex] = new ANCFSystem();
+      sys[sysIndex] = new ANCFSystem(); // Create both systems on the same device
     }
 
     sys[sysIndex]->setTimeStep(hh, 1e-10);
@@ -218,7 +218,6 @@ int main(int argc, char** argv)
     sys[sysIndex]->setSolverType(2);
     sys[sysIndex]->setPrecondType(0);
     sys[sysIndex]->fullJacobian = 1;
-
 
     if(argc>1) {
       sys[sysIndex]->setNumPartitions((int)atoi(argv[1]));
@@ -374,7 +373,8 @@ int main(int argc, char** argv)
 
   // if you don't want to visualize, then output the data
   int fileIndex = 0;
-#pragma omp parallel shared(workingThread, g_lock)
+  bool updateDone = false;
+#pragma omp parallel shared(updateDone, fileIndex, workingThread, g_lock)
   {
     int tid = omp_get_thread_num();
     while(true)
@@ -413,17 +413,18 @@ int main(int argc, char** argv)
 
       else if (tid == abs(1 - loc_working_thread)) {
         // The non-working thread should update the preconditioner
-        cout << "SYSTEM " << tid << " UPDATE PRECONDITIONER... " << endl;
+        cout << "  SYSTEM " << tid << " UPDATE PRECONDITIONER... " << endl;
         sys[tid]->updatePreconditioner();
 
         omp_set_lock(&g_lock);
+        updateDone = true;
+        cout << "  PRECONDITIONER UPDATE COMPLETE (" << sys[tid]->precUpdated << ")" << endl;
         workingThread = abs(1 - workingThread);
-        cout << "PRECONDITIONER UPDATE COMPLETE (" << sys[tid]->precUpdated << ")" << endl;
         omp_unset_lock(&g_lock);
       }
 
       // If the preconditioner has been updated, or the working thread fails to solve the problem, do a switch
-      if (sys[abs(1-loc_working_thread)]->precUpdated) {
+      if (updateDone) {
 
 #pragma omp barrier
         if (sys[loc_working_thread]->time >= t_end) break;
@@ -432,6 +433,7 @@ int main(int argc, char** argv)
         {
           cout << "SWITCH SYSTEM " << loc_working_thread << " -> " << abs(1-loc_working_thread) << "... ";
           sys[loc_working_thread]->transferState(sys[abs(1-loc_working_thread)]);
+          updateDone = false;
           cout << "SWITCH COMPLETE." << endl;
         }
       }
