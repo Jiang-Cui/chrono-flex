@@ -414,12 +414,12 @@ int main(int argc, char** argv)
       else if (tid == abs(1 - loc_working_thread)) {
         // The non-working thread should update the preconditioner
         cout << "  SYSTEM " << tid << " UPDATE PRECONDITIONER... " << endl;
-        sys[tid]->updatePreconditioner();
+  for(int i = 0; i< 100; i++) sys[tid]->updatePreconditioner();
 
         omp_set_lock(&g_lock);
         updateDone = true;
         cout << "  PRECONDITIONER UPDATE COMPLETE (" << sys[tid]->precUpdated << ")" << endl;
-        workingThread = abs(1 - workingThread);
+  workingThread = abs(1 - workingThread);
         omp_unset_lock(&g_lock);
       }
 
