@@ -112,7 +112,7 @@ ANCFSystem::ANCFSystem(int deviceIndex)
   partitions = 1;
   solverOptions.safeFactorization = true;
   solverOptions.trackReordering = true;
-  solverOptions.maxNumIterations = 5000;
+  solverOptions.maxNumIterations = 50;
   preconditionerUpdateModulus = -1; // the preconditioner updates every ___ time steps
   preconditionerMaxKrylovIterations = -1; // the preconditioner updates if Krylov iterations are greater than ____ iterations
   // end spike stuff
@@ -763,8 +763,10 @@ int ANCFSystem::initializeSystem() {
 int ANCFSystem::transferState(ANCFSystem* dst) {
   dst->pnew_d = p_d;
   dst->p_d = p_d;
+  dst->vnew_d = v_d;
   dst->v_d = v_d;
   dst->anew_d = a_d;
+  dst->a_d = a_d;
   dst->time = time;
   dst->timeIndex = timeIndex;
 

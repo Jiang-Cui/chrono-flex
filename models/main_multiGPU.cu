@@ -111,12 +111,17 @@ void renderSceneAll(){
     if(workingThread) nonWorkingThread = 0;
 
     // The working thread will perform the time step while the non-working thread updates the preconditioner
+    cout << "SYSTEM " << workingThread << " UPDATE TIME STEP" << "(TIME: " << sys[workingThread]->time << ")" << endl;
     sys[workingThread]->DoTimeStep();
+    cout << "  SYSTEM " << nonWorkingThread << " UPDATE PRECONDITIONER... " << endl;
     if(!sys[nonWorkingThread]->precUpdated) sys[nonWorkingThread]->updatePreconditioner();
+    cout << "  PRECONDITIONER UPDATE COMPLETE (" << sys[nonWorkingThread]->precUpdated << ")" << endl;
 
     // When the preconditioner is ready, switch the jobs of the systems
-    if(sys[workingThread]->timeIndex%200 == 0) {
+    if(sys[workingThread]->timeIndex%1 == 0) {
+      cout << "SWITCH SYSTEM " << workingThread << " -> " << abs(1-workingThread) << "... ";
       sys[workingThread]->transferState(sys[nonWorkingThread]);
+      cout << "SWITCH COMPLETE." << endl;
       workingThread = nonWorkingThread;
     }
 
@@ -374,6 +379,7 @@ int main(int argc, char** argv)
   // if you don't want to visualize, then output the data
   int fileIndex = 0;
   bool updateDone = false;
+  sys[workingThread]->updatePreconditioner();
 #pragma omp parallel shared(updateDone, fileIndex, workingThread, g_lock)
   {
     int tid = omp_get_thread_num();
@@ -414,7 +420,7 @@ int main(int argc, char** argv)
       else if (tid == abs(1 - loc_working_thread)) {
         // The non-working thread should update the preconditioner
         cout << "  SYSTEM " << tid << " UPDATE PRECONDITIONER... " << endl;
-        sys[tid]->updatePreconditioner();
+        for(int i=0; i<100; i++) sys[tid]->updatePreconditioner();
 
         omp_set_lock(&g_lock);
         updateDone = true;
