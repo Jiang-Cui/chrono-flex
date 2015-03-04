@@ -217,6 +217,7 @@ int main(int argc, char** argv)
     sys[sysIndex]->setMaxNewtonIterations(20);
     sys[sysIndex]->setMaxKrylovIterations(5000);
     sys[sysIndex]->numContactPoints = 30;
+    sys[sysIndex]->preconditionerUpdateModulus = 0; // Never perform an automatic update
 
     sys[sysIndex]->setNumPartitions(1);
 
@@ -426,8 +427,8 @@ int main(int argc, char** argv)
         omp_set_lock(&g_lock);
         cout << "  SYSTEM " << tid << " UPDATE PRECONDITIONER... " << endl;
         omp_unset_lock(&g_lock);
-        //sys[tid]->setupPreconditioner();
-        sys[tid]->updatePreconditioner();
+        sys[tid]->setupPreconditioner();
+        //sys[tid]->updatePreconditioner();
 
         omp_set_lock(&g_lock);
         updateDone = true;
