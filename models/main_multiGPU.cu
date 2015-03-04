@@ -230,7 +230,7 @@ int main(int argc, char** argv)
       sys[sysIndex]->setSolverType((int)atoi(argv[3]));
       sys[sysIndex]->setPrecondType(atoi(argv[4]));
       if(atoi(argv[4])) {
-        sys[sysIndex]->preconditionerUpdateModulus = precUpdateInterval;
+        sys[sysIndex]->preconditionerUpdateModulus = 0; // Never perform an automatic update
         sys[sysIndex]->preconditionerMaxKrylovIterations = precMaxKrylov;
       }
       E = atof(argv[5]);
@@ -379,7 +379,6 @@ int main(int argc, char** argv)
   // if you don't want to visualize, then output the data
   int fileIndex = 0;
   bool updateDone = false;
-  sys[workingThread]->updatePreconditioner();
 #pragma omp parallel shared(updateDone, fileIndex, workingThread, g_lock)
   {
     int tid = omp_get_thread_num();
@@ -427,8 +426,8 @@ int main(int argc, char** argv)
         omp_set_lock(&g_lock);
         cout << "  SYSTEM " << tid << " UPDATE PRECONDITIONER... " << endl;
         omp_unset_lock(&g_lock);
+        //sys[tid]->setupPreconditioner();
         sys[tid]->updatePreconditioner();
-        //sys[tid]->mySolver->update(sys[tid]->lhs.values);
 
         omp_set_lock(&g_lock);
         updateDone = true;

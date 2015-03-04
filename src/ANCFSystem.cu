@@ -773,13 +773,25 @@ int ANCFSystem::transferState(ANCFSystem* dst) {
   return 0;
 }
 
-int ANCFSystem::updatePreconditioner() {
+int ANCFSystem::setupPreconditioner() {
   cudaSetDevice(deviceIndex);
+
+  ANCFSystem::updateInternalForces();
   delete mySolver;
   mySolver = new SpikeSolver(partitions, solverOptions);
   mySolver->setup(lhs);
   precUpdated = true;
   //printf("%f (Device %d): Update preconditioner\n", time, deviceIndex);
+
+  return 0;
+}
+
+int ANCFSystem::updatePreconditioner() {
+  cudaSetDevice(deviceIndex);
+
+  ANCFSystem::updateInternalForces();
+  mySolver->update(lhs.values);
+  precUpdated = true;
 
   return 0;
 }
@@ -798,6 +810,12 @@ int ANCFSystem::DoTimeStep() {
   // update q and q_dot for initial guess
   cusp::blas::axpbypcz(pnew, vnew, anew, pnew, 1, h, .5 * h * h);
   cusp::blas::axpby(vnew, anew, vnew, 1, h);
+
+  // Force a preconditioner update if needed
+  if ((preconditionerUpdateModulus > 0) && (timeIndex % preconditionerUpdateModulus == 0)) {
+    setupPreconditioner();
+    printf("Preconditioner updated (step condition)!\n");
+  }
 
   // Perform Newton iterations
   int it;
@@ -878,6 +896,11 @@ int ANCFSystem::DoTimeStep() {
   // Number of Newton iterations and average number of Krylov iterations
   stepNewtonIterations = it + 1;
   float avgKrylov = stepKrylovIterations / stepNewtonIterations;
+
+  if ((preconditionerMaxKrylovIterations > 0) && (avgKrylov > preconditionerMaxKrylovIterations)) {
+    setupPreconditioner();
+    printf("Preconditioner updated! (krylov condition)\n");
+  }
 
   cusp::copy(anew, a);
   cusp::copy(vnew, v);

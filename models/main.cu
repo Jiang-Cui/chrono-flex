@@ -180,6 +180,7 @@ int main(int argc, char** argv)
 #ifdef WITH_GLUT
 	bool visualize = true;
 #endif
+	visualize = false;
 
 	sys.setTimeStep(1e-3, 1e-10);
 	sys.setMaxNewtonIterations(20);
