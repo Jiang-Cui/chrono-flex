@@ -762,11 +762,11 @@ int ANCFSystem::initializeSystem() {
 
 int ANCFSystem::transferState(ANCFSystem* dst) {
   dst->pnew_d = p_d;
-  dst->p_d = p_d;
+  //dst->p_d = p_d;
   dst->vnew_d = v_d;
-  dst->v_d = v_d;
+  //dst->v_d = v_d;
   dst->anew_d = a_d;
-  dst->a_d = a_d;
+  //dst->a_d = a_d;
   dst->time = time;
   dst->timeIndex = timeIndex;
 
@@ -796,8 +796,8 @@ int ANCFSystem::DoTimeStep() {
   precUpdated = false;
 
   // update q and q_dot for initial guess
-  cusp::blas::axpbypcz(p, v, a, pnew, 1, h, .5 * h * h);
-  cusp::blas::axpby(v, a, vnew, 1, h);
+  cusp::blas::axpbypcz(pnew, vnew, anew, pnew, 1, h, .5 * h * h);
+  cusp::blas::axpby(vnew, anew, vnew, 1, h);
 
   // Perform Newton iterations
   int it;

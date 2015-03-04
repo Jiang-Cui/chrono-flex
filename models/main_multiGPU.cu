@@ -402,8 +402,13 @@ int main(int argc, char** argv)
         }
 
         // The working thread should solve the problem
+        omp_set_lock(&g_lock);
         cout << "SYSTEM " << tid << " UPDATE TIME STEP" << "(TIME: " << sys[tid]->time << ")" << endl;
+        omp_unset_lock(&g_lock);
         sys[tid]->DoTimeStep();
+        omp_set_lock(&g_lock);
+        cout << "SYSTEM " << tid << " UPDATE TIME STEP DONE" << endl;
+        omp_unset_lock(&g_lock);
 
         // Output timing information
         ofile << sys[tid]->time                         << ", "
@@ -419,8 +424,11 @@ int main(int argc, char** argv)
 
       else if (tid == abs(1 - loc_working_thread)) {
         // The non-working thread should update the preconditioner
+        omp_set_lock(&g_lock);
         cout << "  SYSTEM " << tid << " UPDATE PRECONDITIONER... " << endl;
+        omp_unset_lock(&g_lock);
         sys[tid]->updatePreconditioner();
+        //sys[tid]->mySolver->update(sys[tid]->lhs.values);
 
         omp_set_lock(&g_lock);
         updateDone = true;
