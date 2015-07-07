@@ -744,7 +744,6 @@ int ANCFSystem::initializeSystem() {
   cout << endl
        << "Linear problem size:  " << eAll.size() << endl
        << "Number partitions:    " << stats.numPartitions << endl
-       << "Bandwidth after MC64: " << stats.bandwidthMC64 << endl
        << "Bandwidth after RCM:  " << stats.bandwidthReorder << endl
        << "Bandwidth final:      " << stats.bandwidth << endl
        << "nuKf factor:          " << stats.nuKf << endl << endl;
